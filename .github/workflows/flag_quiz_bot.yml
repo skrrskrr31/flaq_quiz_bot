@@ -1,4 +1,4 @@
-● name: Flag Quiz Bot
+ name: Flag Quiz Bot
   on:
     schedule:
       - cron: '0 9 * * *'

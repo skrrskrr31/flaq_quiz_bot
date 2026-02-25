@@ -448,9 +448,10 @@ def create_video(questions):
         return AudioArrayClip(stereo, fps=SR)
 
     n = len(questions)
-    ding_times   = []  # cevap açılma zamanları
-    tick_starts  = []  # countdown başlangıçları
-    whoosh_times = []  # bayrak geçiş zamanları
+    ding_times   = []
+    tick_starts  = []
+    whoosh_times = []
+    tts_reveals  = []
     global_t = 0.0
 
     for i, (identifier, name, diff) in enumerate(questions):
@@ -479,7 +480,12 @@ def create_video(questions):
         path_a = f"_frame_a_{i}.jpg"
         img_a.save(path_a, quality=92)
         clips.append(ImageClip(path_a, duration=1))
-        ding_times.append(global_t)
+        if QUIZ_MODE == "brainrot":
+            tfile = f"_tts_{i}.mp3"
+            if generate_tts(name, tfile):
+                tts_reveals.append((global_t, tfile))
+        else:
+            ding_times.append(global_t)
         global_t += 1.0
 
     # Son frame: tüm cevaplar açık, 2 sn
@@ -508,9 +514,17 @@ def create_video(questions):
     for t in whoosh_times:
         if t < total_dur:
             audio_clips.append(make_whoosh().set_start(t))
-    for t in ding_times:
-        if t < total_dur:
-            audio_clips.append(make_ding(freq=1200).set_start(t))
+    if QUIZ_MODE == "brainrot":
+        from moviepy.editor import AudioFileClip as AFCT
+        for t, tfile in tts_reveals:
+            if t < total_dur and os.path.exists(tfile):
+                try:
+                    audio_clips.append(AFCT(tfile).volumex(1.2).set_start(t))
+                except: pass
+    else:
+        for t in ding_times:
+            if t < total_dur:
+                audio_clips.append(make_ding(freq=1200).set_start(t))
 
     # Arka plan müziği ekle
     music_path = os.path.join(script_dir, "music.mp3")

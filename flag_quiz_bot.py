@@ -331,7 +331,7 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
     last_diff = None
     line_h = 68
 
-    for i, (code, name, diff) in enumerate(questions):
+    for i, (identifier, name, diff) in enumerate(questions):
         # Zorluk başlığı
         if diff != last_diff:
             col = DIFF_COLORS[diff]
@@ -394,15 +394,15 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 # VİDEO OLUŞTUR
 # ─────────────────────────────────────────────────────────────
 def create_video(questions):
-    print("Bayraklar indiriliyor...")
-    flags = {}
+    print("Gorseller yukleniyor...")
+    subjects = {}
     for code, name, diff in questions:
         print(f"  {name} ({code})...", end=" ")
         if QUIZ_MODE == "brainrot":
             subjects[identifier] = load_brainrot_image(identifier)
         else:
             subjects[identifier] = download_flag(identifier)
-        print("OK" if flags[code] else "HATA")
+        print("OK" if subjects[identifier] else "HATA")
 
     print("\nArkaplan yukleniyor...")
     bg_img = load_background()
@@ -453,7 +453,7 @@ def create_video(questions):
     whoosh_times = []  # bayrak geçiş zamanları
     global_t = 0.0
 
-    for i, (code, name, diff) in enumerate(questions):
+    for i, (identifier, name, diff) in enumerate(questions):
         bar_start = i / n
         bar_end   = (i + 1) / n
         # 6 x 0.5sn = 3sn: sayaç 3→2→1
@@ -462,7 +462,7 @@ def create_video(questions):
         for s in range(steps):
             progress = bar_start + (bar_end - bar_start) * (s / steps)
             cd = countdown_map[s]
-            img_q = make_frame(questions, i, i-1, flags[code],
+            img_q = make_frame(questions, i, i-1, subjects[identifier],
                                bar_progress=progress, countdown=cd, bg_img=bg_img)
             path_q = f"_frame_q_{i}_{s}.jpg"
             img_q.save(path_q, quality=92)
@@ -474,7 +474,7 @@ def create_video(questions):
             global_t += 0.5
 
         # Cevap reveal (1 sn) — ding sesi
-        img_a = make_frame(questions, i, i, flags[code],
+        img_a = make_frame(questions, i, i, subjects[identifier],
                            bar_progress=bar_end, countdown=None, bg_img=bg_img)
         path_a = f"_frame_a_{i}.jpg"
         img_a.save(path_a, quality=92)
@@ -483,7 +483,7 @@ def create_video(questions):
         global_t += 1.0
 
     # Son frame: tüm cevaplar açık, 2 sn
-    img_end = make_frame(questions, 9, 9, flags[questions[-1][0]], bg_img=bg_img)
+    img_end = make_frame(questions, 9, 9, subjects[questions[-1][0]], bg_img=bg_img)
     img_end_draw = ImageDraw.Draw(img_end)
     f_end = load_font(64, bold=True)
     bbox = img_end_draw.textbbox((0,0), "How many did you get?", font=f_end)
@@ -651,7 +651,7 @@ if __name__ == "__main__":
     print("=== FLAG QUIZ BOT ===\n")
     questions = pick_questions()
     print("Secilen sorular:")
-    for i, (code, name, diff) in enumerate(questions):
+    for i, (identifier, name, diff) in enumerate(questions):
         print(f"  {i+1}. {name} ({diff})")
     print()
     create_video(questions)

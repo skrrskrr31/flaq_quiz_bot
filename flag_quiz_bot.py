@@ -197,29 +197,46 @@ def make_intro_frame(flag_img, bg_img=None):
         img = Image.new("RGB", (W, H), (12, 12, 28))
 
     overlay_col, text_col, accent_col = get_overlay_and_text_colors(bg_img)
-    overlay = Image.new("RGBA", (W, H), overlay_col)
+    # Intro'da overlay daha hafif olsun — bayrak daha net görünsün
+    r, g, b, a = overlay_col
+    overlay = Image.new("RGBA", (W, H), (r, g, b, max(0, a - 40)))
     img = img.convert("RGBA")
     img = Image.alpha_composite(img, overlay)
     img = img.convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # Başlık
-    f_title = load_font(80, bold=True)
+    # Büyük üst başlık
+    f_title = load_font(96, bold=True)
     title = "FLAG QUIZ"
     bbox = draw.textbbox((0, 0), title, font=f_title)
     tx = (W - (bbox[2] - bbox[0])) // 2
-    draw.text((tx + 3, 100), title, font=f_title, fill=(0, 0, 0))
-    draw.text((tx, 97), title, font=f_title, fill=accent_col)
+    draw.text((tx + 4, 72), title, font=f_title, fill=(0, 0, 0))
+    draw.text((tx, 68), title, font=f_title, fill=accent_col)
 
-    # Büyük bayrak (ortada)
+    # Soru sayısı chip
+    f_chip = load_font(52, bold=True)
+    chip = "10 FLAGS"
+    bbox_c = draw.textbbox((0, 0), chip, font=f_chip)
+    cw = bbox_c[2] - bbox_c[0]
+    cx = (W - cw) // 2
+    draw.rounded_rectangle([cx - 24, 185, cx + cw + 24, 255], radius=22, fill=accent_col)
+    draw.text((cx, 190), chip, font=f_chip, fill=(0, 0, 0))
+
+    # Çok büyük bayrak (ekranın büyük kısmı)
     if flag_img:
         fw, fh = flag_img.size
-        max_w, max_h = 900, 560
+        max_w, max_h = 980, 660
         scale = min(max_w / fw, max_h / fh)
         nw, nh = int(fw * scale), int(fh * scale)
         flag_r = flag_img.resize((nw, nh), Image.Resampling.LANCZOS)
-        flag_y = (H - nh) // 2 - 60
-        border = 8
+        flag_y = 300
+        border = 10
+        # Gölge efekti
+        draw.rectangle(
+            [(W // 2 - nw // 2 - border + 6, flag_y - border + 6),
+             (W // 2 + nw // 2 + border + 6, flag_y + nh + border + 6)],
+            fill=(0, 0, 0)
+        )
         draw.rectangle(
             [(W // 2 - nw // 2 - border, flag_y - border),
              (W // 2 + nw // 2 + border, flag_y + nh + border)],
@@ -228,13 +245,20 @@ def make_intro_frame(flag_img, bg_img=None):
         img.paste(flag_r, (W // 2 - nw // 2, flag_y),
                   flag_r if flag_r.mode == "RGBA" else None)
 
-    # Alt yazı
-    f_sub = load_font(58, bold=True)
-    sub = "Can you name all 10? \U0001f30d"
+    # Alt soru metni
+    f_sub = load_font(62, bold=True)
+    sub = "Which country is this?"
     bbox2 = draw.textbbox((0, 0), sub, font=f_sub)
     sx = (W - (bbox2[2] - bbox2[0])) // 2
-    draw.text((sx + 2, H - 220), sub, font=f_sub, fill=(0, 0, 0))
-    draw.text((sx, H - 223), sub, font=f_sub, fill=text_col)
+    draw.text((sx + 3, H - 260), sub, font=f_sub, fill=(0, 0, 0))
+    draw.text((sx, H - 263), sub, font=f_sub, fill=(255, 255, 255))
+
+    # En alt tag
+    f_tag = load_font(44, bold=False)
+    tag = "#flagquiz  #shorts  #geography"
+    bbox3 = draw.textbbox((0, 0), tag, font=f_tag)
+    draw.text(((W - (bbox3[2] - bbox3[0])) // 2, H - 170), tag,
+              font=f_tag, fill=(180, 180, 180))
 
     return img
 
@@ -428,7 +452,6 @@ def create_video(questions):
     path_intro = "_frame_intro.jpg"
     img_intro.save(path_intro, quality=92)
     # Thumbnail olarak da kaydet (upload sonrası set edilecek)
-    img_intro.save(os.path.join(script_dir, "_thumbnail.jpg"), quality=95)
     clips.append(ImageClip(path_intro, duration=2))
 
     n = len(questions)
@@ -627,19 +650,6 @@ def upload_to_youtube(questions):
                 print(f"  %{int(status.progress() * 100)}")
         video_id = response['id']
         print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
-
-        # Intro frame'i custom thumbnail olarak set et
-        thumb_path = os.path.join(script_dir, "_thumbnail.jpg")
-        if os.path.exists(thumb_path):
-            try:
-                thumb_media = MediaFileUpload(thumb_path, mimetype='image/jpeg')
-                yt.thumbnails().set(videoId=video_id, media_body=thumb_media).execute()
-                print("[OK] Thumbnail set edildi.")
-            except Exception as te:
-                print(f"[WARN] Thumbnail set edilemedi: {te}")
-            finally:
-                try: os.remove(thumb_path)
-                except: pass
     except Exception as e:
         print(f"[ERROR] YouTube yukleme hatasi: {e}")
 

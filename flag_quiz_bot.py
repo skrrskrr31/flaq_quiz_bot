@@ -589,14 +589,20 @@ def upload_to_youtube(questions):
             f.write(creds.to_json())
 
     # Groq ile viral başlık üret
-    hooks = [
-        "Only 1% can name all 10 flags!",
-        "How many flags can you identify?",
-        "Can you name all 10 country flags?",
-        "Test your geography knowledge!",
-        "World flags challenge — how good are you?",
-        "Flag quiz: Easy to Expert!",
-    ]
+    if QUIZ_MODE == "brainrot":
+        hooks = [
+            "Only 1% can name all 10 brainrot characters",
+            "Can you guess all 10 brainrot characters",
+            "Brainrot quiz: Easy to Expert",
+            "How many brainrot characters do you know",
+        ]
+    else:
+        hooks = [
+            "Only 1% can name all 10 flags",
+            "How many flags can you identify",
+            "Can you name all 10 country flags",
+            "Flag quiz: Easy to Expert",
+        ]
     hook = random.choice(hooks)
 
     try:

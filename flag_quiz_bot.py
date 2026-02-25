@@ -605,7 +605,7 @@ def upload_to_youtube(questions):
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content":
-                f'Create a viral YouTube Shorts title for a flag quiz video with 10 flags '
+                f'Create a viral YouTube Shorts title for a {"brainrot character" if QUIZ_MODE == "brainrot" else "flag"} quiz video '
                 f'(Easy to Expert difficulty). Hook style: "{hook}". Max 60 chars. '
                 f'End with #shorts. ONLY THE TITLE, no quotes:'}]
         )

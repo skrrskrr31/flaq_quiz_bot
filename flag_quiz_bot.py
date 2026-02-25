@@ -427,6 +427,8 @@ def create_video(questions):
     img_intro = make_intro_frame(flags[first_code], bg_img=bg_img)
     path_intro = "_frame_intro.jpg"
     img_intro.save(path_intro, quality=92)
+    # Thumbnail olarak da kaydet (upload sonrası set edilecek)
+    img_intro.save(os.path.join(script_dir, "_thumbnail.jpg"), quality=95)
     clips.append(ImageClip(path_intro, duration=2))
 
     n = len(questions)
@@ -522,8 +524,8 @@ def create_video(questions):
         try: os.remove(f"_frame_a_{i}.jpg")
         except: pass
     try: os.remove("_frame_end.jpg")
-    try: os.remove("_frame_intro.jpg")
     except: pass
+    try: os.remove("_frame_intro.jpg")
     except: pass
 
 
@@ -623,7 +625,21 @@ def upload_to_youtube(questions):
             status, response = req.next_chunk()
             if status:
                 print(f"  %{int(status.progress() * 100)}")
-        print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{response['id']}")
+        video_id = response['id']
+        print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
+
+        # Intro frame'i custom thumbnail olarak set et
+        thumb_path = os.path.join(script_dir, "_thumbnail.jpg")
+        if os.path.exists(thumb_path):
+            try:
+                thumb_media = MediaFileUpload(thumb_path, mimetype='image/jpeg')
+                yt.thumbnails().set(videoId=video_id, media_body=thumb_media).execute()
+                print("[OK] Thumbnail set edildi.")
+            except Exception as te:
+                print(f"[WARN] Thumbnail set edilemedi: {te}")
+            finally:
+                try: os.remove(thumb_path)
+                except: pass
     except Exception as e:
         print(f"[ERROR] YouTube yukleme hatasi: {e}")
 

@@ -616,18 +616,41 @@ def upload_to_youtube(questions):
         print(f"[WARN] Groq hatasi ({e}). Yedek baslik kullaniliyor.")
         title = f"{hook} #shorts"
 
-    desc = (
-        "Can you name all 10 country flags? Easy → Expert difficulty!\n\n"
-        "3 Easy | 3 Medium | 3 Hard | 1 Expert\n\n"
-        "How many did you get right? Comment below!\n\n"
-        "#shorts #flagquiz #geography #flags #quiz #worldflags #countryflags "
-        "#geographyquiz #trivia #challenge"
-    )
-    tags = [
-        "flag quiz", "flags", "geography", "world flags", "country flags",
-        "quiz", "shorts", "geography quiz", "flag challenge", "educational",
-        "trivia", "flag game", "country quiz"
-    ]
+    if QUIZ_MODE == "brainrot":
+        desc = (
+            "Can you name all 10 brainrot characters? Easy to Expert\!
+
+"
+            "3 Easy | 3 Medium | 3 Hard | 1 Expert
+
+"
+            "How many did you know? Comment below\!
+
+"
+            "#shorts #brainrot #italianbrainrot #brainrotquiz #tralalero #viral"
+        )
+        tags = [
+            "brainrot", "italian brainrot", "brainrot quiz",
+            "tralalero tralala", "bombardiro crocodilo", "tung tung",
+            "meme", "shorts", "viral", "brainrot characters"
+        ]
+    else:
+        desc = (
+            "Can you name all 10 country flags? Easy to Expert\!
+
+"
+            "3 Easy | 3 Medium | 3 Hard | 1 Expert
+
+"
+            "How many did you get right? Comment below\!
+
+"
+            "#shorts #flagquiz #geography #flags #quiz #worldflags"
+        )
+        tags = [
+            "flag quiz", "flags", "geography", "world flags", "country flags",
+            "quiz", "shorts", "geography quiz", "flag challenge", "trivia"
+        ]
 
     print(f"Baslik: {title}")
 

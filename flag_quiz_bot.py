@@ -396,8 +396,8 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 def create_video(questions):
     print("Gorseller yukleniyor...")
     subjects = {}
-    for code, name, diff in questions:
-        print(f"  {name} ({code})...", end=" ")
+    for identifier, name, diff in questions:
+        print(f"  {name}...", end=" ")
         if QUIZ_MODE == "brainrot":
             subjects[identifier] = load_brainrot_image(identifier)
         else:

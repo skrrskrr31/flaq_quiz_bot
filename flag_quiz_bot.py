@@ -624,15 +624,9 @@ def upload_to_youtube(questions):
 
     if QUIZ_MODE == "brainrot":
         desc = (
-            "Can you name all 10 brainrot characters? Easy to Expert!
-
-"
-            "3 Easy | 3 Medium | 3 Hard | 1 Expert
-
-"
-            "How many did you know? Comment below!
-
-"
+            "Can you name all 10 brainrot characters? Easy to Expert!\n"
+            "3 Easy | 3 Medium | 3 Hard | 1 Expert\n"
+            "How many did you know? Comment below!\n"
             "#shorts #brainrot #italianbrainrot #brainrotquiz #tralalero #viral"
         )
         tags = [
@@ -642,15 +636,9 @@ def upload_to_youtube(questions):
         ]
     else:
         desc = (
-            "Can you name all 10 country flags? Easy to Expert!
-
-"
-            "3 Easy | 3 Medium | 3 Hard | 1 Expert
-
-"
-            "How many did you get right? Comment below!
-
-"
+            "Can you name all 10 country flags? Easy to Expert!\n"
+            "3 Easy | 3 Medium | 3 Hard | 1 Expert\n"
+            "How many did you get right? Comment below!\n"
             "#shorts #flagquiz #geography #flags #quiz #worldflags"
         )
         tags = [

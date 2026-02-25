@@ -121,11 +121,11 @@ BRAINROT_CHARACTERS = {
         {"name": "Job Job Sahur",        "image": "job_job_sahur"},
     ],
     "expert": [
-        {"name": "Karkerkar Kurkur",     "image": "Karkerkar_kurkur"},
-        {"name": "La Esok Sekolah",      "image": "la_Esok_Sekolah"},
-        {"name": "Rhino Toasterino",     "image": "Rhino_Toasterino"},
+        {"name": "Karkerkar Kurkur",     "image": "karkerkar_kurkur"},
+        {"name": "La Esok Sekolah",      "image": "la_esok_sekolah"},
+        {"name": "Rhino Toasterino",     "image": "rhino_toasterino"},
         {"name": "Swag Soda",            "image": "swag_soda"},
-        {"name": "Svinina Bombardino",   "image": "Svinina_Bombardino"},
+        {"name": "Svinina Bombardino",   "image": "svinina_bombardino"},
     ],
 }
 

@@ -30,7 +30,9 @@ def _write_from_env(env_var, filepath):
 _write_from_env("TOKEN_JSON", os.path.join(script_dir, "token.json"))
 _write_from_env("SECRET_JSON", os.path.join(script_dir, "secret.json"))
 
-OUTPUT_VIDEO = os.path.join(script_dir, "flag_quiz.mp4")
+OUTPUT_VIDEO          = os.path.join(script_dir, "flag_quiz.mp4")
+OUTPUT_VIDEO_BRAINROT = os.path.join(script_dir, "brainrot_quiz.mp4")
+MODE_FILE    = os.path.join(script_dir, "kullanilan_quiz.json")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 SECRET_PATH  = os.path.join(script_dir, "secret.json")
 TOKEN_PATH   = os.path.join(script_dir, "token.json")
@@ -94,6 +96,33 @@ DIFF_COLORS = {
     "expert": (220,  60,  60),   # Kırmızı
 }
 
+# ─────────────────────────────────────────────────────────────
+# BRAINROT KARAKTERLER  (dosya adı (uzantsız) → isim, zorluk)
+# brainrot_images/ klasöründe .jpg veya .png olarak olmalı
+# ─────────────────────────────────────────────────────────────
+BRAINROT_CHARS = {
+    "tralalero_tralala":    ("Tralalero Tralala",    "easy"),
+    "bombardiro_crocodilo": ("Bombardiro Crocodilo",  "easy"),
+    "tung_tung_sahur":      ("Tung Tung Sahur",       "easy"),
+    "cappuccino_assassino": ("Cappuccino Assassino",  "medium"),
+    "chimpanzini_bananini": ("Chimpanzini Bananini",  "medium"),
+    "lirili_larila":        ("Lirili Larila",         "medium"),
+    "la_vaca_saturno":      ("La Vaca Saturno",       "medium"),
+    "glorbo_fruttodrillo":  ("Glorbo Fruttodrillo",   "hard"),
+    "swag_soda":            ("Swag Soda",             "hard"),
+    "brr_brr_patapim":      ("Brr Brr Patapim",       "hard"),
+    "bobritto_bandito":     ("Bobritto Bandito",      "hard"),
+    "bombombini_gusini":    ("Bombombini Gusini",     "hard"),
+    "burbaloni_luliloli":   ("Burbaloni Luliloli",    "expert"),
+    "frigo_camelo":         ("Frigo Camelo",          "expert"),
+    "rhino_toasterino":     ("Rhino Toasterino",      "expert"),
+    "boneca_ambalabu":      ("Boneca Ambalabu",       "expert"),
+    "job_job_sahur":        ("Job Job Sahur",         "expert"),
+    "karkerkar_kurkur":     ("Karkerkar Kurkur",      "expert"),
+    "la_esok_sekolah":      ("La Esok Sekolah",       "expert"),
+    "svinina_bombardino":   ("Svinina Bombardino",    "expert"),
+}
+
 
 # ─────────────────────────────────────────────────────────────
 # YARDIMCI: FONT YÜKLEYİCİ
@@ -151,6 +180,37 @@ def pick_questions():
 
 
 # ─────────────────────────────────────────────────────────────
+# BRAINROT SORULARI SEÇ  (3 easy, 3 medium, 3 hard, 1 expert)
+# ─────────────────────────────────────────────────────────────
+def pick_brainrot_questions():
+    by_diff = {"easy": [], "medium": [], "hard": [], "expert": []}
+    for key, (name, diff) in BRAINROT_CHARS.items():
+        by_diff[diff].append((key, name))
+
+    selected = []
+    for diff, count in [("easy", 3), ("medium", 3), ("hard", 3), ("expert", 1)]:
+        pool = by_diff[diff]
+        chosen = random.sample(pool, min(count, len(pool)))
+        for key, name in chosen:
+            selected.append((key, name, diff))
+    return selected
+
+
+def load_brainrot_image(key):
+    """brainrot_images/ klasöründen karakter görselini yükle (.jpg veya .png)."""
+    folder = os.path.join(script_dir, "brainrot_images")
+    for ext in ("jpg", "jpeg", "png", "webp"):
+        path = os.path.join(folder, f"{key}.{ext}")
+        if os.path.exists(path):
+            try:
+                return Image.open(path).convert("RGBA")
+            except Exception as e:
+                print(f"  [WARN] Gorsel acilamadi ({path}): {e}")
+    print(f"  [WARN] Brainrot gorseli bulunamadi: {key}")
+    return None
+
+
+# ─────────────────────────────────────────────────────────────
 # FRAME ÜRETİCİ
 # ─────────────────────────────────────────────────────────────
 def load_background():
@@ -189,8 +249,8 @@ def get_overlay_and_text_colors(bg_img):
     return (0,0,0,overlay_alpha), (255,255,255), (255,220,50)
 
 
-def make_intro_frame(flag_img, bg_img=None):
-    """Sadece bayrak gösteren intro — cevap listesi yok, thumbnail için."""
+def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
+    """Sadece bayrak/karakter gösteren intro — cevap listesi yok, thumbnail için."""
     if bg_img:
         img = bg_img.copy()
     else:
@@ -207,7 +267,7 @@ def make_intro_frame(flag_img, bg_img=None):
 
     # Büyük üst başlık
     f_title = load_font(96, bold=True)
-    title = "FLAG QUIZ"
+    title = "BRAINROT QUIZ" if quiz_mode == "brainrot" else "FLAG QUIZ"
     bbox = draw.textbbox((0, 0), title, font=f_title)
     tx = (W - (bbox[2] - bbox[0])) // 2
     draw.text((tx + 4, 72), title, font=f_title, fill=(0, 0, 0))
@@ -215,7 +275,7 @@ def make_intro_frame(flag_img, bg_img=None):
 
     # Soru sayısı chip
     f_chip = load_font(52, bold=True)
-    chip = "10 FLAGS"
+    chip = "10 CHARS" if quiz_mode == "brainrot" else "10 FLAGS"
     bbox_c = draw.textbbox((0, 0), chip, font=f_chip)
     cw = bbox_c[2] - bbox_c[0]
     cx = (W - cw) // 2
@@ -247,7 +307,7 @@ def make_intro_frame(flag_img, bg_img=None):
 
     # Alt soru metni
     f_sub = load_font(62, bold=True)
-    sub = "Which country is this?"
+    sub = "Name this character!" if quiz_mode == "brainrot" else "Which country is this?"
     bbox2 = draw.textbbox((0, 0), sub, font=f_sub)
     sx = (W - (bbox2[2] - bbox2[0])) // 2
     draw.text((sx + 3, H - 260), sub, font=f_sub, fill=(0, 0, 0))
@@ -255,7 +315,7 @@ def make_intro_frame(flag_img, bg_img=None):
 
     # En alt tag
     f_tag = load_font(44, bold=False)
-    tag = "#flagquiz  #shorts  #geography"
+    tag = "#brainrot  #shorts  #quiz" if quiz_mode == "brainrot" else "#flagquiz  #shorts  #geography"
     bbox3 = draw.textbbox((0, 0), tag, font=f_tag)
     draw.text(((W - (bbox3[2] - bbox3[0])) // 2, H - 170), tag,
               font=f_tag, fill=(180, 180, 180))
@@ -264,7 +324,7 @@ def make_intro_frame(flag_img, bg_img=None):
 
 
 def make_frame(questions, current_idx, revealed_up_to, flag_img,
-               bar_progress=None, countdown=None, bg_img=None):
+               bar_progress=None, countdown=None, bg_img=None, quiz_mode="flag"):
     """
     questions      : [(code, name, diff), ...]
     current_idx    : şu an gösterilen bayrak (0-9)
@@ -288,7 +348,7 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 
     # ── Üst başlık ───────────────────────────────────────────
     f_title = load_font(72, bold=True)
-    title = "FLAG QUIZ"
+    title = "BRAINROT QUIZ" if quiz_mode == "brainrot" else "FLAG QUIZ"
     bbox = draw.textbbox((0,0), title, font=f_title)
     tx = (W - (bbox[2]-bbox[0])) // 2
     draw.text((tx+3, 53), title, font=f_title, fill=(0,0,0))
@@ -360,7 +420,9 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 
     # ── Alt soru notu ─────────────────────────────────────────
     f_note = load_font(44, bold=True)
-    note = f"Which country? ({current_idx+1}/10)"
+    note = (f"Name this character! ({current_idx+1}/10)"
+            if quiz_mode == "brainrot"
+            else f"Which country? ({current_idx+1}/10)")
     bbox = draw.textbbox((0,0), note, font=f_note)
     nx = (W - (bbox[2]-bbox[0])) // 2
     draw.text((nx+2, H-128), note, font=f_note, fill=(0,0,0))
@@ -395,13 +457,17 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 # ─────────────────────────────────────────────────────────────
 # VİDEO OLUŞTUR
 # ─────────────────────────────────────────────────────────────
-def create_video(questions):
-    print("Bayraklar indiriliyor...")
+def create_video(questions, quiz_mode="flag"):
+    label = "Karakterler" if quiz_mode == "brainrot" else "Bayraklar"
+    print(f"{label} yukleniyor...")
     flags = {}
-    for code, name, diff in questions:
-        print(f"  {name} ({code})...", end=" ")
-        flags[code] = download_flag(code)
-        print("OK" if flags[code] else "HATA")
+    for key, name, diff in questions:
+        print(f"  {name} ({key})...", end=" ")
+        if quiz_mode == "brainrot":
+            flags[key] = load_brainrot_image(key)
+        else:
+            flags[key] = download_flag(key)
+        print("OK" if flags[key] else "HATA")
 
     print("\nArkaplan yukleniyor...")
     bg_img = load_background()
@@ -446,9 +512,9 @@ def create_video(questions):
         stereo = np.column_stack([wave, wave]).astype(np.float32)
         return AudioArrayClip(stereo, fps=SR)
 
-    # ── Intro frame (thumbnail için — sadece bayrak, cevap listesi yok) ──
+    # ── Intro frame (thumbnail için — sadece bayrak/karakter, cevap listesi yok) ──
     first_code = questions[0][0]
-    img_intro = make_intro_frame(flags[first_code], bg_img=bg_img)
+    img_intro = make_intro_frame(flags[first_code], bg_img=bg_img, quiz_mode=quiz_mode)
     path_intro = "_frame_intro.jpg"
     img_intro.save(path_intro, quality=92)
     # Thumbnail olarak da kaydet (upload sonrası set edilecek)
@@ -470,7 +536,8 @@ def create_video(questions):
             progress = bar_start + (bar_end - bar_start) * (s / steps)
             cd = countdown_map[s]
             img_q = make_frame(questions, i, i-1, flags[code],
-                               bar_progress=progress, countdown=cd, bg_img=bg_img)
+                               bar_progress=progress, countdown=cd, bg_img=bg_img,
+                               quiz_mode=quiz_mode)
             path_q = f"_frame_q_{i}_{s}.jpg"
             img_q.save(path_q, quality=92)
             clips.append(ImageClip(path_q, duration=0.5))
@@ -482,7 +549,8 @@ def create_video(questions):
 
         # Cevap reveal (1 sn) — ding sesi
         img_a = make_frame(questions, i, i, flags[code],
-                           bar_progress=bar_end, countdown=None, bg_img=bg_img)
+                           bar_progress=bar_end, countdown=None, bg_img=bg_img,
+                           quiz_mode=quiz_mode)
         path_a = f"_frame_a_{i}.jpg"
         img_a.save(path_a, quality=92)
         clips.append(ImageClip(path_a, duration=1))
@@ -490,7 +558,8 @@ def create_video(questions):
         global_t += 1.0
 
     # Son frame: tüm cevaplar açık, 2 sn
-    img_end = make_frame(questions, 9, 9, flags[questions[-1][0]], bg_img=bg_img)
+    img_end = make_frame(questions, 9, 9, flags[questions[-1][0]], bg_img=bg_img,
+                         quiz_mode=quiz_mode)
     img_end_draw = ImageDraw.Draw(img_end)
     f_end = load_font(64, bold=True)
     bbox = img_end_draw.textbbox((0,0), "How many did you get?", font=f_end)
@@ -536,8 +605,9 @@ def create_video(questions):
     if audio_clips:
         final = final.set_audio(CompositeAudioClip(audio_clips))
 
-    final.write_videofile(OUTPUT_VIDEO, fps=24, codec="libx264", logger=None)
-    print(f"\n[OK] Video hazir: {OUTPUT_VIDEO}")
+    out_path = OUTPUT_VIDEO_BRAINROT if quiz_mode == "brainrot" else OUTPUT_VIDEO
+    final.write_videofile(out_path, fps=24, codec="libx264", logger=None)
+    print(f"\n[OK] Video hazir: {out_path}")
 
     # Temizlik
     for i in range(10):
@@ -674,16 +744,158 @@ def upload_to_youtube(questions):
 
 
 # ─────────────────────────────────────────────────────────────
+# BRAINROT YOUTUBE UPLOAD
+# ─────────────────────────────────────────────────────────────
+def upload_to_youtube_brainrot(questions):
+    print("\nYouTube'a (brainrot) yukleniyor...")
+
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaFileUpload
+
+    if not os.path.exists(SECRET_PATH):
+        print(f"[ERROR] {SECRET_PATH} bulunamadi. Yukleme atlaniyor.")
+        return
+
+    SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
+    creds = None
+    if os.path.exists(TOKEN_PATH):
+        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            from google_auth_oauthlib.flow import InstalledAppFlow
+            flow = InstalledAppFlow.from_client_secrets_file(SECRET_PATH, SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open(TOKEN_PATH, 'w') as f:
+            f.write(creds.to_json())
+
+    hooks = [
+        "Can you name all 10 brainrot characters?",
+        "My friend got 3/10. Can you beat him?",
+        "Stop scrolling — name this character",
+        "I failed this quiz. Can you pass?",
+        "True brainrot fan gets 10/10",
+        "Score 10/10 and you're a legend",
+        "Most people quit at character #7",
+        "Average person gets 4. What's yours?",
+        "10/10 = sigma. 0/10 = you're cooked",
+        "Rate your score in the comments",
+        "These characters look similar but aren't",
+        "The hardest brainrot quiz on YouTube",
+        "No one gets the last character right",
+        "Character #9 tricks everyone",
+        "You think you know brainrot? Think again",
+        "Real brainrot nerd gets 10/10",
+        "This separates real fans from casuals",
+        "How deep is your brainrot really?",
+        "Comment your score below",
+        "Only real ones get 10/10",
+    ]
+    hook = random.choice(hooks)
+
+    try:
+        from groq import Groq
+        client = Groq(api_key=GROQ_API_KEY)
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content":
+                f'Create a YouTube Shorts title for a 10-question brainrot character quiz (Easy to Expert). '
+                f'Use this angle/hook: "{hook}". '
+                f'Rules: max 60 chars, end with #shorts, must feel natural and scroll-stopping. '
+                f'ONLY THE TITLE, no quotes:'}]
+        )
+        title = resp.choices[0].message.content.strip().replace('"', '').strip()
+        if not title:
+            raise ValueError("Bos baslik")
+    except Exception as e:
+        print(f"[WARN] Groq hatasi ({e}). Yedek baslik kullaniliyor.")
+        title = f"{hook} #shorts"
+
+    desc = (
+        "Can you name all 10 brainrot characters? Easy → Expert difficulty!\n\n"
+        "3 Easy | 3 Medium | 3 Hard | 1 Expert\n\n"
+        "How many did you get right? Comment below!\n\n"
+        "#shorts #brainrot #quiz #brainrotquiz #viral "
+        "#tralalero #bombardiro #tungsung #brainrotcharacters"
+    )
+    tags = [
+        "brainrot", "brainrot quiz", "brainrot characters", "quiz", "shorts",
+        "tralalero tralala", "bombardiro crocodilo", "tung tung sahur",
+        "brainrot challenge", "viral", "funny quiz", "italian brainrot"
+    ]
+
+    print(f"Baslik: {title}")
+
+    yt = build('youtube', 'v3', credentials=creds)
+    body = {
+        'snippet': {
+            'title': title[:100],
+            'description': desc,
+            'tags': tags,
+            'categoryId': '22'  # People & Blogs
+        },
+        'status': {
+            'privacyStatus': 'public',
+            'selfDeclaredMadeForKids': False
+        }
+    }
+
+    try:
+        media = MediaFileUpload(OUTPUT_VIDEO_BRAINROT, mimetype='video/mp4', resumable=True)
+        req = yt.videos().insert(part='snippet,status', body=body, media_body=media)
+        response = None
+        while response is None:
+            status, response = req.next_chunk()
+            if status:
+                print(f"  %{int(status.progress() * 100)}")
+        video_id = response['id']
+        print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
+    except Exception as e:
+        print(f"[ERROR] YouTube yukleme hatasi: {e}")
+
+
+# ─────────────────────────────────────────────────────────────
 # ANA AKIŞ
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("=== FLAG QUIZ BOT ===\n")
-    questions = pick_questions()
+    import json
+
+    # Mod dosyasını oku — flag ve brainrot arasında sırayla geç
+    if os.path.exists(MODE_FILE):
+        with open(MODE_FILE, 'r') as f:
+            last_mode = json.load(f).get("last_mode", "brainrot")
+    else:
+        last_mode = "brainrot"
+
+    quiz_mode = "flag" if last_mode == "brainrot" else "brainrot"
+
+    # Yeni modu kaydet
+    with open(MODE_FILE, 'w') as f:
+        json.dump({"last_mode": quiz_mode}, f)
+
+    print(f"=== {'FLAG' if quiz_mode == 'flag' else 'BRAINROT'} QUIZ BOT ===\n")
+    print(f"Mod: {quiz_mode.upper()}")
+
+    if quiz_mode == "flag":
+        questions = pick_questions()
+    else:
+        questions = pick_brainrot_questions()
+
     print("Secilen sorular:")
-    for i, (code, name, diff) in enumerate(questions):
+    for i, (key, name, diff) in enumerate(questions):
         print(f"  {i+1}. {name} ({diff})")
     print()
-    create_video(questions)
-    upload_to_youtube(questions)
+
+    create_video(questions, quiz_mode=quiz_mode)
+
+    if quiz_mode == "flag":
+        upload_to_youtube(questions)
+    else:
+        upload_to_youtube_brainrot(questions)
+
+    out_path = OUTPUT_VIDEO if quiz_mode == "flag" else OUTPUT_VIDEO_BRAINROT
     print("\n=== Tamamlandi! ===")
-    print(f"Video: {OUTPUT_VIDEO}")
+    print(f"Video: {out_path}")

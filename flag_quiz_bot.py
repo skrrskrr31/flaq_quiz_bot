@@ -583,14 +583,32 @@ def upload_to_youtube(questions):
         with open(TOKEN_PATH, 'w') as f:
             f.write(creds.to_json())
 
-    # Groq ile viral başlık üret
+    # Groq ile viral başlık üret — geniş ve çeşitli hook listesi
     hooks = [
-        "Only 1% can name all 10 flags!",
-        "How many flags can you identify?",
-        "Can you name all 10 country flags?",
-        "Test your geography knowledge!",
-        "World flags challenge — how good are you?",
-        "Flag quiz: Easy to Expert!",
+        # Curiosity / challenge angle
+        "Bet you can't name all 10 flags",
+        "My friend got 3/10. Can you beat him?",
+        "Stop scrolling — name this flag",
+        "I failed this quiz. Can you pass?",
+        "Your geography teacher would be disappointed",
+        # Score / result angle
+        "Score 10/10 and you're a genius",
+        "Most people quit at flag #7",
+        "Average person gets 4. What's yours?",
+        "10/10 = legend. 5/10 = normal. 0/10 = ???",
+        "Rate your score in the comments",
+        # Surprising / contrarian
+        "These flags look identical but aren't",
+        "The hardest flag quiz on YouTube",
+        "No one gets the last flag right",
+        "Flag #9 tricks everyone",
+        "You think you know flags? Think again",
+        # Identity / ego
+        "Real geography nerd gets 10/10",
+        "This separates travelers from tourists",
+        "Your passport knows these. Do you?",
+        "World traveler or just pretending?",
+        "How cultured are you really?",
     ]
     hook = random.choice(hooks)
 
@@ -600,9 +618,10 @@ def upload_to_youtube(questions):
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content":
-                f'Create a viral YouTube Shorts title for a flag quiz video with 10 flags '
-                f'(Easy to Expert difficulty). Hook style: "{hook}". Max 60 chars. '
-                f'End with #shorts. ONLY THE TITLE, no quotes:'}]
+                f'Create a YouTube Shorts title for a 10-flag quiz (Easy to Expert). '
+                f'Use this angle/hook: "{hook}". '
+                f'Rules: max 60 chars, end with #shorts, do NOT use the words "Only 1%" or "Geography", '
+                f'must feel natural and scroll-stopping. ONLY THE TITLE, no quotes:'}]
         )
         title = resp.choices[0].message.content.strip().replace('"', '').strip()
         if not title:

@@ -32,11 +32,36 @@ _write_from_env("SECRET_JSON", os.path.join(script_dir, "secret.json"))
 
 OUTPUT_VIDEO          = os.path.join(script_dir, "flag_quiz.mp4")
 OUTPUT_VIDEO_BRAINROT = os.path.join(script_dir, "brainrot_quiz.mp4")
-MODE_FILE    = os.path.join(script_dir, "kullanilan_quiz.json")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+MODE_FILE           = os.path.join(script_dir, "kullanilan_quiz.json")
+GROQ_API_KEY        = os.environ.get("GROQ_API_KEY", "")
+TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID", "")
 SECRET_PATH  = os.path.join(script_dir, "secret.json")
 TOKEN_PATH   = os.path.join(script_dir, "token.json")
 W, H = 1080, 1920
+
+
+# ─────────────────────────────────────────────────────────────
+# TELEGRAM BİLDİRİM
+# ─────────────────────────────────────────────────────────────
+def send_telegram(msg):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    import urllib.request, urllib.parse
+    try:
+        data = urllib.parse.urlencode({
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": msg,
+            "parse_mode": "HTML"
+        }).encode()
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            data=data
+        )
+        urllib.request.urlopen(req, timeout=10)
+        print("[Telegram] Mesaj gonderildi.")
+    except Exception as e:
+        print(f"[Telegram] Hata: {e}")
 
 # ─────────────────────────────────────────────────────────────
 # ÜLKE VERİSİ  (kod → isim, zorluk)
@@ -739,8 +764,10 @@ def upload_to_youtube(questions):
                 print(f"  %{int(status.progress() * 100)}")
         video_id = response['id']
         print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
+        return video_id
     except Exception as e:
         print(f"[ERROR] YouTube yukleme hatasi: {e}")
+        return None
 
 
 # ─────────────────────────────────────────────────────────────
@@ -853,8 +880,10 @@ def upload_to_youtube_brainrot(questions):
                 print(f"  %{int(status.progress() * 100)}")
         video_id = response['id']
         print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
+        return video_id
     except Exception as e:
         print(f"[ERROR] YouTube yukleme hatasi: {e}")
+        return None
 
 
 # ─────────────────────────────────────────────────────────────
@@ -891,10 +920,19 @@ if __name__ == "__main__":
 
     create_video(questions, quiz_mode=quiz_mode)
 
+    bot_label = "Flag Quiz" if quiz_mode == "flag" else "Brainrot Quiz"
     if quiz_mode == "flag":
-        upload_to_youtube(questions)
+        video_id = upload_to_youtube(questions)
     else:
-        upload_to_youtube_brainrot(questions)
+        video_id = upload_to_youtube_brainrot(questions)
+
+    if video_id:
+        send_telegram(
+            f"✅ <b>flaq_quiz ({bot_label})</b> video yayınlandı!\n"
+            f"🔗 https://youtube.com/shorts/{video_id}"
+        )
+    else:
+        send_telegram(f"❌ <b>flaq_quiz ({bot_label})</b> YouTube yüklemesi başarısız!")
 
     out_path = OUTPUT_VIDEO if quiz_mode == "flag" else OUTPUT_VIDEO_BRAINROT
     print("\n=== Tamamlandi! ===")

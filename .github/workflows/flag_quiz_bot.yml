@@ -1,24 +1,24 @@
 name: Flag Quiz Bot
 on:
   schedule:
-    - cron: "0 6 * * *"   # 09:00 Turkiye
-    - cron: "0 9 * * *"   # 12:00 Turkiye
-    - cron: "0 12 * * *"  # 15:00 Turkiye
-    - cron: "0 15 * * *"  # 18:00 Turkiye
-    - cron: "0 18 * * *"  # 21:00 Turkiye
+    - cron: '0 9 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 19 * * *'
   workflow_dispatch:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: '3.11'
+          cache: 'pip'
       - name: ffmpeg
         uses: FedericoCarboni/setup-ffmpeg@v3
       - name: Deps

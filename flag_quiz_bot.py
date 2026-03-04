@@ -32,6 +32,7 @@ _write_from_env("SECRET_JSON", os.path.join(script_dir, "secret.json"))
 
 OUTPUT_VIDEO          = os.path.join(script_dir, "flag_quiz.mp4")
 OUTPUT_VIDEO_BRAINROT = os.path.join(script_dir, "brainrot_quiz.mp4")
+OUTPUT_VIDEO_CAPITAL  = os.path.join(script_dir, "capital_quiz.mp4")
 MODE_FILE           = os.path.join(script_dir, "kullanilan_quiz.json")
 GROQ_API_KEY        = os.environ.get("GROQ_API_KEY", "")
 TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -112,6 +113,21 @@ COUNTRIES = {
     "kp": ("North Korea",   "expert"),
     "cy": ("Cyprus",        "expert"),
     "mt": ("Malta",         "expert"),
+}
+
+CAPITALS = {
+    "us": "Washington D.C.", "gb": "London",        "ca": "Ottawa",       "au": "Canberra",
+    "de": "Berlin",          "fr": "Paris",          "jp": "Tokyo",        "br": "Brasilia",
+    "it": "Rome",            "cn": "Beijing",
+    "tr": "Ankara",          "mx": "Mexico City",    "in": "New Delhi",    "es": "Madrid",
+    "ru": "Moscow",          "kr": "Seoul",          "za": "Pretoria",     "ar": "Buenos Aires",
+    "eg": "Cairo",           "se": "Stockholm",
+    "ng": "Abuja",           "pk": "Islamabad",      "bd": "Dhaka",        "vn": "Hanoi",
+    "ua": "Kyiv",            "nl": "Amsterdam",      "pl": "Warsaw",       "ro": "Bucharest",
+    "my": "Kuala Lumpur",    "ph": "Manila",
+    "bt": "Thimphu",         "mv": "Male",           "mh": "Majuro",       "ki": "South Tarawa",
+    "vu": "Port Vila",       "pg": "Port Moresby",   "tl": "Dili",
+    "kp": "Pyongyang",       "cy": "Nicosia",        "mt": "Valletta",
 }
 
 DIFF_COLORS = {
@@ -221,6 +237,20 @@ def pick_brainrot_questions():
     return selected
 
 
+def pick_capital_questions():
+    by_diff = {"easy": [], "medium": [], "hard": [], "expert": []}
+    for code, (name, diff) in COUNTRIES.items():
+        capital = CAPITALS.get(code)
+        if capital:
+            by_diff[diff].append((code, capital))
+    selected = []
+    for diff, count in [("easy", 3), ("medium", 3), ("hard", 3), ("expert", 1)]:
+        chosen = random.sample(by_diff[diff], count)
+        for code, capital in chosen:
+            selected.append((code, capital, diff))
+    return selected
+
+
 def load_brainrot_image(key):
     """brainrot_images/ klasöründen karakter görselini yükle (.jpg veya .png)."""
     folder = os.path.join(script_dir, "brainrot_images")
@@ -292,7 +322,12 @@ def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
 
     # Büyük üst başlık
     f_title = load_font(96, bold=True)
-    title = "BRAINROT QUIZ" if quiz_mode == "brainrot" else "FLAG QUIZ"
+    if quiz_mode == "brainrot":
+        title = "BRAINROT QUIZ"
+    elif quiz_mode == "capital":
+        title = "CAPITAL QUIZ"
+    else:
+        title = "FLAG QUIZ"
     bbox = draw.textbbox((0, 0), title, font=f_title)
     tx = (W - (bbox[2] - bbox[0])) // 2
     draw.text((tx + 4, 72), title, font=f_title, fill=(0, 0, 0))
@@ -330,9 +365,19 @@ def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
         img.paste(flag_r, (W // 2 - nw // 2, flag_y),
                   flag_r if flag_r.mode == "RGBA" else None)
 
+    # Capital modunda bayrak altına ülke adını yaz
+    if quiz_mode == "capital" and flag_img:
+        # flag_img burada questions[0]'ın bayrağı — ülke adını COUNTRIES'ten al
+        pass  # ülke adı intro'da gösterilmiyor, sadece soru yazısında belirtiliyor
+
     # Alt soru metni
     f_sub = load_font(62, bold=True)
-    sub = "Name this character!" if quiz_mode == "brainrot" else "Which country is this?"
+    if quiz_mode == "brainrot":
+        sub = "Name this character!"
+    elif quiz_mode == "capital":
+        sub = "What's the capital?"
+    else:
+        sub = "Which country is this?"
     bbox2 = draw.textbbox((0, 0), sub, font=f_sub)
     sx = (W - (bbox2[2] - bbox2[0])) // 2
     draw.text((sx + 3, H - 260), sub, font=f_sub, fill=(0, 0, 0))
@@ -340,7 +385,12 @@ def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
 
     # En alt tag
     f_tag = load_font(44, bold=False)
-    tag = "#brainrot  #shorts  #quiz" if quiz_mode == "brainrot" else "#flagquiz  #shorts  #geography"
+    if quiz_mode == "brainrot":
+        tag = "#brainrot  #shorts  #quiz"
+    elif quiz_mode == "capital":
+        tag = "#capitalquiz  #geography  #shorts"
+    else:
+        tag = "#flagquiz  #shorts  #geography"
     bbox3 = draw.textbbox((0, 0), tag, font=f_tag)
     draw.text(((W - (bbox3[2] - bbox3[0])) // 2, H - 170), tag,
               font=f_tag, fill=(180, 180, 180))
@@ -373,7 +423,12 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 
     # ── Üst başlık ───────────────────────────────────────────
     f_title = load_font(72, bold=True)
-    title = "BRAINROT QUIZ" if quiz_mode == "brainrot" else "FLAG QUIZ"
+    if quiz_mode == "brainrot":
+        title = "BRAINROT QUIZ"
+    elif quiz_mode == "capital":
+        title = "CAPITAL QUIZ"
+    else:
+        title = "FLAG QUIZ"
     bbox = draw.textbbox((0,0), title, font=f_title)
     tx = (W - (bbox[2]-bbox[0])) // 2
     draw.text((tx+3, 53), title, font=f_title, fill=(0,0,0))
@@ -407,6 +462,16 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 
         img.paste(flag_r, (W//2 - nw//2, flag_area_y),
                   flag_r if flag_r.mode == "RGBA" else None)
+
+    # ── Capital modunda ülke adını bayrak altında göster ──────
+    if quiz_mode == "capital":
+        cur_code = questions[current_idx][0]
+        country_name = COUNTRIES.get(cur_code, (cur_code,))[0]
+        f_country = load_font(54, bold=True)
+        bbox_cn = draw.textbbox((0, 0), country_name, font=f_country)
+        cnx = (W - (bbox_cn[2] - bbox_cn[0])) // 2
+        draw.text((cnx + 2, 622), country_name, font=f_country, fill=(0, 0, 0))
+        draw.text((cnx, 620), country_name, font=f_country, fill=(255, 255, 255))
 
     # ── Liste ─────────────────────────────────────────────────
     list_y = 660
@@ -445,9 +510,14 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 
     # ── Alt soru notu ─────────────────────────────────────────
     f_note = load_font(44, bold=True)
-    note = (f"Name this character! ({current_idx+1}/10)"
-            if quiz_mode == "brainrot"
-            else f"Which country? ({current_idx+1}/10)")
+    if quiz_mode == "brainrot":
+        note = f"Name this character! ({current_idx+1}/10)"
+    elif quiz_mode == "capital":
+        cur_code = questions[current_idx][0]
+        cur_country = COUNTRIES.get(cur_code, (cur_code,))[0]
+        note = f"Capital of {cur_country}? ({current_idx+1}/10)"
+    else:
+        note = f"Which country? ({current_idx+1}/10)"
     bbox = draw.textbbox((0,0), note, font=f_note)
     nx = (W - (bbox[2]-bbox[0])) // 2
     draw.text((nx+2, H-128), note, font=f_note, fill=(0,0,0))
@@ -483,7 +553,7 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
 # VİDEO OLUŞTUR
 # ─────────────────────────────────────────────────────────────
 def create_video(questions, quiz_mode="flag"):
-    label = "Karakterler" if quiz_mode == "brainrot" else "Bayraklar"
+    label = "Karakterler" if quiz_mode == "brainrot" else "Bayraklar / Ulkeler"
     print(f"{label} yukleniyor...")
     flags = {}
     for key, name, diff in questions:
@@ -630,7 +700,12 @@ def create_video(questions, quiz_mode="flag"):
     if audio_clips:
         final = final.set_audio(CompositeAudioClip(audio_clips))
 
-    out_path = OUTPUT_VIDEO_BRAINROT if quiz_mode == "brainrot" else OUTPUT_VIDEO
+    if quiz_mode == "brainrot":
+        out_path = OUTPUT_VIDEO_BRAINROT
+    elif quiz_mode == "capital":
+        out_path = OUTPUT_VIDEO_CAPITAL
+    else:
+        out_path = OUTPUT_VIDEO
     final.write_videofile(out_path, fps=24, codec="libx264", logger=None)
     print(f"\n[OK] Video hazir: {out_path}")
 
@@ -887,6 +962,122 @@ def upload_to_youtube_brainrot(questions):
 
 
 # ─────────────────────────────────────────────────────────────
+# CAPITAL YOUTUBE UPLOAD
+# ─────────────────────────────────────────────────────────────
+def upload_to_youtube_capital(questions):
+    print("\nYouTube'a (capital) yukleniyor...")
+
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaFileUpload
+
+    if not os.path.exists(SECRET_PATH):
+        print(f"[ERROR] {SECRET_PATH} bulunamadi. Yukleme atlaniyor.")
+        return
+
+    SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
+    creds = None
+    if os.path.exists(TOKEN_PATH):
+        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            from google_auth_oauthlib.flow import InstalledAppFlow
+            flow = InstalledAppFlow.from_client_secrets_file(SECRET_PATH, SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open(TOKEN_PATH, 'w') as f:
+            f.write(creds.to_json())
+
+    hooks = [
+        "Can you name all 10 capitals?",
+        "Most people fail at capital #7",
+        "Average person gets 4/10. What's yours?",
+        "Stop scrolling — what's this capital?",
+        "I failed this quiz. Can you pass?",
+        "Score 10/10 and you're a genius",
+        "Your teacher would be proud of 10/10",
+        "10/10 = geography king. 0/10 = oof",
+        "Rate your score in the comments",
+        "The hardest capital quiz on YouTube",
+        "No one gets the last capital right",
+        "Capital #9 tricks everyone",
+        "You think you know capitals? Think again",
+        "Real geography nerd gets 10/10",
+        "Kids ace this. Can adults?",
+        "This is easier than it looks. Or is it?",
+        "How well do you know world capitals?",
+        "My 10-year-old got 8/10. Can you beat her?",
+        "School geography quiz. How do you score?",
+        "Comment your score — no cheating!",
+    ]
+    hook = random.choice(hooks)
+
+    try:
+        from groq import Groq
+        client = Groq(api_key=GROQ_API_KEY)
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content":
+                f'Create a YouTube Shorts title for a 10-question world capitals quiz (Easy to Expert). '
+                f'Use this angle/hook: "{hook}". '
+                f'Rules: max 60 chars, end with #shorts, must feel natural and scroll-stopping. '
+                f'ONLY THE TITLE, no quotes:'}]
+        )
+        title = resp.choices[0].message.content.strip().replace('"', '').strip()
+        if not title:
+            raise ValueError("Bos baslik")
+    except Exception as e:
+        print(f"[WARN] Groq hatasi ({e}). Yedek baslik kullaniliyor.")
+        title = f"{hook} #shorts"
+
+    desc = (
+        "Can you name all 10 world capitals? Easy → Expert difficulty!\n\n"
+        "3 Easy | 3 Medium | 3 Hard | 1 Expert\n\n"
+        "How many did you get right? Comment below!\n\n"
+        "#shorts #capitalquiz #geography #worldcapitals #quiz "
+        "#geographyquiz #trivia #capitals #educational #school"
+    )
+    tags = [
+        "capital quiz", "world capitals", "geography", "capitals", "quiz",
+        "shorts", "geography quiz", "capital cities", "educational",
+        "trivia", "country capitals", "school quiz", "kids quiz"
+    ]
+
+    print(f"Baslik: {title}")
+
+    yt = build('youtube', 'v3', credentials=creds)
+    body = {
+        'snippet': {
+            'title': title[:100],
+            'description': desc,
+            'tags': tags,
+            'categoryId': '27'  # Education
+        },
+        'status': {
+            'privacyStatus': 'public',
+            'selfDeclaredMadeForKids': False
+        }
+    }
+
+    try:
+        media = MediaFileUpload(OUTPUT_VIDEO_CAPITAL, mimetype='video/mp4', resumable=True)
+        req = yt.videos().insert(part='snippet,status', body=body, media_body=media)
+        response = None
+        while response is None:
+            status, response = req.next_chunk()
+            if status:
+                print(f"  %{int(status.progress() * 100)}")
+        video_id = response['id']
+        print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
+        return video_id
+    except Exception as e:
+        print(f"[ERROR] YouTube yukleme hatasi: {e}")
+        return None
+
+
+# ─────────────────────────────────────────────────────────────
 # ÇALIŞMA LOGU
 # ─────────────────────────────────────────────────────────────
 def save_run_log(status, video_id=None, title=None, error=None, mode=None):
@@ -915,24 +1106,28 @@ def save_run_log(status, video_id=None, title=None, error=None, mode=None):
 if __name__ == "__main__":
     import json
 
-    # Mod dosyasını oku — flag ve brainrot arasında sırayla geç
+    # Mod dosyasını oku — flag → brainrot → capital → flag → ...
+    MODES = ["flag", "brainrot", "capital"]
     if os.path.exists(MODE_FILE):
         with open(MODE_FILE, 'r') as f:
-            last_mode = json.load(f).get("last_mode", "brainrot")
+            last_mode = json.load(f).get("last_mode", "capital")
     else:
-        last_mode = "brainrot"
+        last_mode = "capital"
 
-    quiz_mode = "flag" if last_mode == "brainrot" else "brainrot"
+    last_idx = MODES.index(last_mode) if last_mode in MODES else 2
+    quiz_mode = MODES[(last_idx + 1) % len(MODES)]
 
     # Yeni modu kaydet
     with open(MODE_FILE, 'w') as f:
         json.dump({"last_mode": quiz_mode}, f)
 
-    print(f"=== {'FLAG' if quiz_mode == 'flag' else 'BRAINROT'} QUIZ BOT ===\n")
+    print(f"=== {quiz_mode.upper()} QUIZ BOT ===\n")
     print(f"Mod: {quiz_mode.upper()}")
 
     if quiz_mode == "flag":
         questions = pick_questions()
+    elif quiz_mode == "capital":
+        questions = pick_capital_questions()
     else:
         questions = pick_brainrot_questions()
 
@@ -943,9 +1138,13 @@ if __name__ == "__main__":
 
     create_video(questions, quiz_mode=quiz_mode)
 
-    bot_label = "Flag Quiz" if quiz_mode == "flag" else "Brainrot Quiz"
+    bot_labels = {"flag": "Flag Quiz", "brainrot": "Brainrot Quiz", "capital": "Capital Quiz"}
+    bot_label = bot_labels.get(quiz_mode, quiz_mode)
+
     if quiz_mode == "flag":
         video_id = upload_to_youtube(questions)
+    elif quiz_mode == "capital":
+        video_id = upload_to_youtube_capital(questions)
     else:
         video_id = upload_to_youtube_brainrot(questions)
 
@@ -959,6 +1158,7 @@ if __name__ == "__main__":
         save_run_log("error", error="YouTube upload failed", mode=quiz_mode)
         send_telegram(f"❌ <b>flaq_quiz ({bot_label})</b> YouTube yüklemesi başarısız!")
 
-    out_path = OUTPUT_VIDEO if quiz_mode == "flag" else OUTPUT_VIDEO_BRAINROT
+    out_paths = {"flag": OUTPUT_VIDEO, "brainrot": OUTPUT_VIDEO_BRAINROT, "capital": OUTPUT_VIDEO_CAPITAL}
+    out_path = out_paths.get(quiz_mode, OUTPUT_VIDEO)
     print("\n=== Tamamlandi! ===")
     print(f"Video: {out_path}")

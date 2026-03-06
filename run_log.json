@@ -2,12 +2,6 @@
   "bot": "flaq_quiz",
   "runs": [
     {
-      "ts": "2026-02-28T09:49:33",
-      "status": "ok",
-      "video_id": "zcPHhmznVgI",
-      "mode": "brainrot"
-    },
-    {
       "ts": "2026-02-28T14:49:38",
       "status": "ok",
       "video_id": "l7LLm56RiCo",
@@ -120,6 +114,12 @@
       "status": "ok",
       "video_id": "y9fys9y_-6Y",
       "mode": "flag"
+    },
+    {
+      "ts": "2026-03-06T15:56:09",
+      "status": "ok",
+      "video_id": "fFEHd-MEBH4",
+      "mode": "brainrot"
     }
   ]
 }

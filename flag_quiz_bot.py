@@ -31,8 +31,9 @@ _write_from_env("TOKEN_JSON", os.path.join(script_dir, "token.json"))
 _write_from_env("SECRET_JSON", os.path.join(script_dir, "secret.json"))
 
 OUTPUT_VIDEO          = os.path.join(script_dir, "flag_quiz.mp4")
-OUTPUT_VIDEO_BRAINROT = os.path.join(script_dir, "brainrot_quiz.mp4")
-OUTPUT_VIDEO_CAPITAL  = os.path.join(script_dir, "capital_quiz.mp4")
+OUTPUT_VIDEO_BRAINROT    = os.path.join(script_dir, "brainrot_quiz.mp4")
+OUTPUT_VIDEO_CAPITAL     = os.path.join(script_dir, "capital_quiz.mp4")
+OUTPUT_VIDEO_MULTICHOICE = os.path.join(script_dir, "multichoice_quiz.mp4")
 MODE_FILE           = os.path.join(script_dir, "kullanilan_quiz.json")
 GROQ_API_KEY        = os.environ.get("GROQ_API_KEY", "")
 TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -1082,6 +1083,304 @@ def upload_to_youtube_capital(questions):
 
 
 # ─────────────────────────────────────────────────────────────
+# 4 ŞIKLI MULTIPLE CHOICE QUIZ
+# ─────────────────────────────────────────────────────────────
+
+def get_distractors(correct_code, n=3):
+    """Doğru cevap dışında n adet yanlış şık seç (farklı zorluklardan karışık)."""
+    pool = [(code, data[0]) for code, data in COUNTRIES.items() if code != correct_code]
+    random.shuffle(pool)
+    return pool[:n]
+
+
+def make_multichoice_frame(flag_img, question_num, total, choices, revealed,
+                           correct_idx, bg_img=None):
+    """
+    choices    : [(code, name), (code, name), (code, name), (code, name)]
+    revealed   : True ise doğru=yeşil, yanlış=kırmızı
+    correct_idx: doğru şıkkın indeksi (0-3)
+    """
+    if bg_img:
+        img = bg_img.copy()
+    else:
+        img = Image.new("RGB", (W, H), (12, 12, 28))
+
+    overlay_col, text_col, accent_col = get_overlay_and_text_colors(bg_img)
+    overlay = Image.new("RGBA", (W, H), overlay_col)
+    img = img.convert("RGBA")
+    img = Image.alpha_composite(img, overlay)
+    img = img.convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    # ── Başlık ──────────────────────────────────────────────
+    f_title = load_font(72, bold=True)
+    bbox = draw.textbbox((0, 0), "FLAG QUIZ", font=f_title)
+    tx = (W - (bbox[2] - bbox[0])) // 2
+    draw.text((tx + 3, 53), "FLAG QUIZ", font=f_title, fill=(0, 0, 0))
+    draw.text((tx, 50),     "FLAG QUIZ", font=f_title, fill=accent_col)
+
+    # ── İlerleme çubuğu ─────────────────────────────────────
+    bar_x, bar_y, bar_w, bar_h = 60, 145, W - 120, 18
+    draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 40, 60))
+    filled = int(bar_w * question_num / total)
+    if filled > 0:
+        draw.rectangle([bar_x, bar_y, bar_x + filled, bar_y + bar_h], fill=accent_col)
+
+    # ── Bayrak ──────────────────────────────────────────────
+    flag_area_y = 200
+    if flag_img:
+        fw, fh = flag_img.size
+        max_w, max_h = 820, 460
+        scale = min(max_w / fw, max_h / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        flag_r = flag_img.resize((nw, nh), Image.Resampling.LANCZOS)
+        border = 8
+        draw.rectangle(
+            [(W // 2 - nw // 2 - border, flag_area_y - border),
+             (W // 2 + nw // 2 + border, flag_area_y + nh + border)],
+            outline=accent_col, width=border
+        )
+        img.paste(flag_r, (W // 2 - nw // 2, flag_area_y),
+                  flag_r if flag_r.mode == "RGBA" else None)
+
+    # ── Soru metni ──────────────────────────────────────────
+    q_y = 710
+    f_q = load_font(54, bold=True)
+    q_text = f"Which country? ({question_num}/{total})"
+    bbox = draw.textbbox((0, 0), q_text, font=f_q)
+    qx = (W - (bbox[2] - bbox[0])) // 2
+    draw.text((qx + 2, q_y + 2), q_text, font=f_q, fill=(0, 0, 0))
+    draw.text((qx, q_y),         q_text, font=f_q, fill=text_col)
+
+    # ── 4 Şık (2×2 grid) ────────────────────────────────────
+    labels   = ["A", "B", "C", "D"]
+    btn_w    = 472
+    btn_h    = 140
+    gap_x    = 24
+    gap_y    = 22
+    start_x  = (W - btn_w * 2 - gap_x) // 2
+    start_y  = 810
+    f_lbl    = load_font(54, bold=True)
+    f_opt    = load_font(40, bold=False)
+    f_opt_sm = load_font(32, bold=False)
+
+    for i, (code, name) in enumerate(choices):
+        col = i % 2
+        row = i // 2
+        bx  = start_x + col * (btn_w + gap_x)
+        by  = start_y + row * (btn_h + gap_y)
+
+        if not revealed:
+            bg_col  = (35, 35, 58)
+            lbl_col = accent_col
+            txt_col = (220, 220, 220)
+            border_col = (70, 70, 100)
+        elif i == correct_idx:
+            bg_col  = (25, 150, 65)
+            lbl_col = (255, 255, 255)
+            txt_col = (255, 255, 255)
+            border_col = (50, 220, 100)
+        else:
+            bg_col  = (70, 25, 25)
+            lbl_col = (180, 80, 80)
+            txt_col = (130, 130, 130)
+            border_col = (100, 40, 40)
+
+        draw.rounded_rectangle([bx, by, bx + btn_w, by + btn_h],
+                                radius=22, fill=bg_col, outline=border_col, width=3)
+
+        # Etiket (A/B/C/D)
+        draw.text((bx + 20, by + (btn_h - 60) // 2), labels[i],
+                  font=f_lbl, fill=lbl_col)
+
+        # Ayraç çizgisi
+        div_x = bx + 82
+        draw.line([(div_x, by + 18), (div_x, by + btn_h - 18)],
+                  fill=border_col, width=2)
+
+        # Ülke adı (sığmıyorsa küçük font)
+        name_x = div_x + 16
+        max_name_w = bx + btn_w - name_x - 12
+        bbox_n = draw.textbbox((0, 0), name, font=f_opt)
+        if bbox_n[2] - bbox_n[0] > max_name_w:
+            f_use = f_opt_sm
+            name_y = by + (btn_h - 36) // 2
+        else:
+            f_use = f_opt
+            name_y = by + (btn_h - 46) // 2
+        draw.text((name_x, name_y), name, font=f_use, fill=txt_col)
+
+        # Doğru cevapta ✓ işareti
+        if revealed and i == correct_idx:
+            f_chk = load_font(52, bold=True)
+            draw.text((bx + btn_w - 58, by + (btn_h - 56) // 2),
+                      "✓", font=f_chk, fill=(150, 255, 150))
+
+    return img
+
+
+def create_multichoice_video(questions):
+    """4 şıklı multiple choice flag quiz videosu oluştur."""
+    print("Bayraklar yukleniyor (multichoice)...")
+    flags = {}
+    for code, name, diff in questions:
+        print(f"  {name} ({code})...", end=" ")
+        flags[code] = download_flag(code)
+        print("OK" if flags[code] else "HATA")
+
+    # Her soru için şıkları hazırla
+    choices_list = []
+    for code, name, diff in questions:
+        distractors = get_distractors(code, n=3)
+        all_choices = [(code, name)] + distractors
+        random.shuffle(all_choices)
+        correct_idx = next(i for i, (c, _) in enumerate(all_choices) if c == code)
+        choices_list.append((all_choices, correct_idx))
+
+    bg_img = load_background()
+    print("\nFrameler olusturuluyor...")
+    clips = []
+
+    import numpy as np
+    from moviepy.audio.AudioClip import AudioArrayClip, CompositeAudioClip
+    from moviepy.editor import AudioFileClip as AFC
+
+    SR = 44100
+    tick_mp3  = os.path.join(script_dir, "tick.mp3")
+    tick_clip = AFC(tick_mp3).volumex(0.7) if os.path.exists(tick_mp3) else None
+
+    def make_ding(freq=1100, dur=0.25, volume=0.85):
+        t     = np.linspace(0, dur, int(SR * dur), endpoint=False)
+        wave  = np.sin(2 * np.pi * freq * t) * np.linspace(1, 0, int(SR * dur)) * volume
+        stereo = np.column_stack([wave, wave]).astype(np.float32)
+        return AudioArrayClip(stereo, fps=SR)
+
+    audio_clips = []
+    elapsed = 0.0
+
+    for i, (code, name, diff) in enumerate(questions):
+        choices, correct_idx = choices_list[i]
+        flag_img = flags[code]
+
+        # Soru frame (3 sn)
+        q_img = make_multichoice_frame(flag_img, i + 1, len(questions),
+                                       choices, False, correct_idx, bg_img)
+        q_clip = ImageClip(np.array(q_img), duration=3.0)
+        clips.append(q_clip)
+        if tick_clip:
+            seg = tick_clip.subclip(0, min(3.0, tick_clip.duration))
+            audio_clips.append(seg.set_start(elapsed))
+        elapsed += 3.0
+
+        # Reveal frame (1.5 sn)
+        r_img = make_multichoice_frame(flag_img, i + 1, len(questions),
+                                       choices, True, correct_idx, bg_img)
+        r_clip = ImageClip(np.array(r_img), duration=1.5)
+        clips.append(r_clip)
+        audio_clips.append(make_ding().set_start(elapsed))
+        elapsed += 1.5
+
+    print("Video birlestiriliyor...")
+    final = concatenate_videoclips(clips, method="compose")
+    if audio_clips:
+        final = final.set_audio(CompositeAudioClip(audio_clips))
+
+    final.write_videofile(OUTPUT_VIDEO_MULTICHOICE, fps=24, codec="libx264", logger=None)
+    print(f"[OK] Video hazir: {OUTPUT_VIDEO_MULTICHOICE}")
+
+
+def upload_to_youtube_multichoice(questions):
+    """4 şıklı quiz videosunu YouTube'a yükle."""
+    import base64 as _b64
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaFileUpload
+
+    token_env = os.environ.get("TOKEN_JSON", "")
+    if token_env:
+        try:
+            token_data = _b64.b64decode(token_env).decode()
+        except Exception:
+            token_data = token_env
+        with open(TOKEN_PATH, "w") as f:
+            f.write(token_data)
+
+    SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
+    import json as _json
+    with open(TOKEN_PATH) as f:
+        td = _json.load(f)
+    creds = Credentials(
+        token=td.get("token"), refresh_token=td.get("refresh_token"),
+        token_uri=td.get("token_uri", "https://oauth2.googleapis.com/token"),
+        client_id=td.get("client_id"), client_secret=td.get("client_secret"),
+        scopes=SCOPES
+    )
+
+    hooks = [
+        "Can you guess all 4? Most people miss #7",
+        "Only geniuses get 10/10 — can you?",
+        "How many flags can YOU identify?",
+        "This quiz stumps 90% of people",
+        "Pause before the reveal — be honest!",
+    ]
+    hook = random.choice(hooks)
+    try:
+        from groq import Groq
+        client = Groq(api_key=GROQ_API_KEY)
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content":
+                f'Create a YouTube Shorts title for a 4-choice flag quiz with 10 questions. '
+                f'Use this hook: "{hook}". '
+                f'Rules: max 60 chars, end with #Shorts, scroll-stopping. ONLY THE TITLE:'}]
+        )
+        title = resp.choices[0].message.content.strip().replace('"', '').strip()
+        if not title:
+            raise ValueError("bos")
+    except Exception as e:
+        print(f"[WARN] Groq hatasi ({e}). Yedek baslik.")
+        title = f"{hook} #Shorts"
+
+    desc = (
+        "Can you pick the right country from 4 choices? Easy → Expert!\n\n"
+        "10 flags | 4 choices each | Can you go 10/10?\n\n"
+        "Comment your score below! 👇\n"
+        "🔔 Subscribe for a new quiz every day!\n\n"
+        "#Shorts #flagquiz #geography #quiz #multiplechoice "
+        "#worldflags #geographyquiz #trivia #quiztime #viral"
+    )
+    tags = [
+        "flag quiz", "multiple choice", "geography quiz", "world flags",
+        "quiz", "shorts", "country quiz", "flag challenge", "4 choices",
+        "trivia", "geography", "educational", "viral quiz"
+    ]
+
+    print(f"Baslik: {title}")
+    yt   = build('youtube', 'v3', credentials=creds)
+    body = {
+        'snippet': {
+            'title': title[:100], 'description': desc,
+            'tags': tags, 'categoryId': '27'
+        },
+        'status': {'privacyStatus': 'public', 'selfDeclaredMadeForKids': False}
+    }
+    try:
+        media = MediaFileUpload(OUTPUT_VIDEO_MULTICHOICE, mimetype='video/mp4', resumable=True)
+        req   = yt.videos().insert(part='snippet,status', body=body, media_body=media)
+        response = None
+        while response is None:
+            status, response = req.next_chunk()
+            if status:
+                print(f"  %{int(status.progress() * 100)}")
+        video_id = response['id']
+        print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
+        return video_id
+    except Exception as e:
+        print(f"[ERROR] YouTube yukleme hatasi: {e}")
+        return None
+
+
+# ─────────────────────────────────────────────────────────────
 # ÇALIŞMA LOGU
 # ─────────────────────────────────────────────────────────────
 def save_run_log(status, video_id=None, title=None, error=None, mode=None):
@@ -1110,8 +1409,8 @@ def save_run_log(status, video_id=None, title=None, error=None, mode=None):
 if __name__ == "__main__":
     import json
 
-    # Mod dosyasını oku — flag → brainrot → capital → flag → ...
-    MODES = ["flag", "brainrot", "capital"]
+    # Mod dosyasını oku — flag → brainrot → capital → multichoice → flag → ...
+    MODES = ["flag", "brainrot", "capital", "multichoice"]
     if os.path.exists(MODE_FILE):
         with open(MODE_FILE, 'r') as f:
             last_mode = json.load(f).get("last_mode", "capital")
@@ -1132,6 +1431,8 @@ if __name__ == "__main__":
         questions = pick_questions()
     elif quiz_mode == "capital":
         questions = pick_capital_questions()
+    elif quiz_mode == "multichoice":
+        questions = pick_questions()   # flag sorularını kullan, şıklar kod içinde üretiliyor
     else:
         questions = pick_brainrot_questions()
 
@@ -1140,15 +1441,21 @@ if __name__ == "__main__":
         print(f"  {i+1}. {name} ({diff})")
     print()
 
-    create_video(questions, quiz_mode=quiz_mode)
+    if quiz_mode == "multichoice":
+        create_multichoice_video(questions)
+    else:
+        create_video(questions, quiz_mode=quiz_mode)
 
-    bot_labels = {"flag": "Flag Quiz", "brainrot": "Brainrot Quiz", "capital": "Capital Quiz"}
+    bot_labels = {"flag": "Flag Quiz", "brainrot": "Brainrot Quiz",
+                  "capital": "Capital Quiz", "multichoice": "4-Choice Quiz"}
     bot_label = bot_labels.get(quiz_mode, quiz_mode)
 
     if quiz_mode == "flag":
         video_id = upload_to_youtube(questions)
     elif quiz_mode == "capital":
         video_id = upload_to_youtube_capital(questions)
+    elif quiz_mode == "multichoice":
+        video_id = upload_to_youtube_multichoice(questions)
     else:
         video_id = upload_to_youtube_brainrot(questions)
 
@@ -1162,7 +1469,8 @@ if __name__ == "__main__":
         save_run_log("error", error="YouTube upload failed", mode=quiz_mode)
         send_telegram(f"❌ <b>flaq_quiz ({bot_label})</b> YouTube yüklemesi başarısız!")
 
-    out_paths = {"flag": OUTPUT_VIDEO, "brainrot": OUTPUT_VIDEO_BRAINROT, "capital": OUTPUT_VIDEO_CAPITAL}
+    out_paths = {"flag": OUTPUT_VIDEO, "brainrot": OUTPUT_VIDEO_BRAINROT,
+                 "capital": OUTPUT_VIDEO_CAPITAL, "multichoice": OUTPUT_VIDEO_MULTICHOICE}
     out_path = out_paths.get(quiz_mode, OUTPUT_VIDEO)
     print("\n=== Tamamlandi! ===")
     print(f"Video: {out_path}")

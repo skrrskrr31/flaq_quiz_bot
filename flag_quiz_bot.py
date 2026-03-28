@@ -828,8 +828,9 @@ def upload_to_youtube(questions):
             'categoryId': '27'  # Education
         },
         'status': {
-            'privacyStatus': 'public',
-            'selfDeclaredMadeForKids': False
+            'privacyStatus':           'public',
+            'selfDeclaredMadeForKids': False,
+            'containsSyntheticMedia':  False
         }
     }
 
@@ -945,8 +946,9 @@ def upload_to_youtube_brainrot(questions):
             'categoryId': '22'  # People & Blogs
         },
         'status': {
-            'privacyStatus': 'public',
-            'selfDeclaredMadeForKids': False
+            'privacyStatus':           'public',
+            'selfDeclaredMadeForKids': False,
+            'containsSyntheticMedia':  False
         }
     }
 
@@ -1062,8 +1064,9 @@ def upload_to_youtube_capital(questions):
             'categoryId': '27'  # Education
         },
         'status': {
-            'privacyStatus': 'public',
-            'selfDeclaredMadeForKids': False
+            'privacyStatus':           'public',
+            'selfDeclaredMadeForKids': False,
+            'containsSyntheticMedia':  False
         }
     }
 

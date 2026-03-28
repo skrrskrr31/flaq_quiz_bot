@@ -1515,7 +1515,7 @@ def upload_to_youtube_trivia():
     body = {
         'snippet': {'title': title[:100], 'description': desc,
                     'tags': tags, 'categoryId': '27'},
-        'status':  {'privacyStatus': 'public', 'selfDeclaredMadeForKids': False}
+        'status':  {'privacyStatus': 'public', 'selfDeclaredMadeForKids': False, 'containsSyntheticMedia': False}
     }
     try:
         media = MediaFileUpload(out_path, mimetype='video/mp4', resumable=True)
@@ -1834,7 +1834,7 @@ def upload_to_youtube_multichoice(questions):
             'title': title[:100], 'description': desc,
             'tags': tags, 'categoryId': '27'
         },
-        'status': {'privacyStatus': 'public', 'selfDeclaredMadeForKids': False}
+        'status': {'privacyStatus': 'public', 'selfDeclaredMadeForKids': False, 'containsSyntheticMedia': False}
     }
     try:
         media = MediaFileUpload(OUTPUT_VIDEO_MULTICHOICE, mimetype='video/mp4', resumable=True)

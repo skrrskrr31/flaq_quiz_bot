@@ -34,6 +34,7 @@ OUTPUT_VIDEO          = os.path.join(script_dir, "flag_quiz.mp4")
 OUTPUT_VIDEO_BRAINROT    = os.path.join(script_dir, "brainrot_quiz.mp4")
 OUTPUT_VIDEO_CAPITAL     = os.path.join(script_dir, "capital_quiz.mp4")
 OUTPUT_VIDEO_MULTICHOICE = os.path.join(script_dir, "multichoice_quiz.mp4")
+OUTPUT_VIDEO_TRIVIA      = os.path.join(script_dir, "trivia_quiz.mp4")
 MODE_FILE           = os.path.join(script_dir, "kullanilan_quiz.json")
 GROQ_API_KEY        = os.environ.get("GROQ_API_KEY", "")
 TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -1083,6 +1084,456 @@ def upload_to_youtube_capital(questions):
 
 
 # ─────────────────────────────────────────────────────────────
+# GENEL KÜLTÜR QUIZ
+# ─────────────────────────────────────────────────────────────
+
+TRIVIA_FALLBACK = [
+    {"question": "How many bones are in the adult human body?", "choices": ["196", "206", "216", "226"], "correct": 1, "category": "Science"},
+    {"question": "What is the fastest animal on land?", "choices": ["Lion", "Horse", "Cheetah", "Falcon"], "correct": 2, "category": "Animals"},
+    {"question": "Which planet is closest to the Sun?", "choices": ["Venus", "Earth", "Mars", "Mercury"], "correct": 3, "category": "Space"},
+    {"question": "How many sides does an octagon have?", "choices": ["6", "7", "8", "9"], "correct": 2, "category": "Math"},
+    {"question": "What is the capital of Australia?", "choices": ["Sydney", "Melbourne", "Canberra", "Brisbane"], "correct": 2, "category": "Geography"},
+    {"question": "Which gas do plants absorb from the air?", "choices": ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], "correct": 2, "category": "Science"},
+    {"question": "How many continents are there on Earth?", "choices": ["5", "6", "7", "8"], "correct": 2, "category": "Geography"},
+    {"question": "What is the largest ocean on Earth?", "choices": ["Atlantic", "Indian", "Arctic", "Pacific"], "correct": 3, "category": "Geography"},
+    {"question": "How many strings does a standard guitar have?", "choices": ["4", "5", "6", "7"], "correct": 2, "category": "Music"},
+    {"question": "What is the hardest natural substance on Earth?", "choices": ["Gold", "Iron", "Diamond", "Quartz"], "correct": 2, "category": "Science"},
+    {"question": "Which country has the largest population?", "choices": ["USA", "India", "China", "Brazil"], "correct": 1, "category": "Geography"},
+    {"question": "How many players are on a standard soccer team?", "choices": ["9", "10", "11", "12"], "correct": 2, "category": "Sports"},
+    {"question": "What is the chemical symbol for water?", "choices": ["WA", "H2O", "HO2", "W2O"], "correct": 1, "category": "Science"},
+    {"question": "Which animal has the longest neck?", "choices": ["Elephant", "Giraffe", "Camel", "Horse"], "correct": 1, "category": "Animals"},
+    {"question": "How many hours are in a week?", "choices": ["144", "168", "172", "196"], "correct": 1, "category": "Math"},
+    {"question": "What is the largest planet in our solar system?", "choices": ["Saturn", "Neptune", "Jupiter", "Uranus"], "correct": 2, "category": "Space"},
+    {"question": "Which country invented pizza?", "choices": ["France", "Spain", "Greece", "Italy"], "correct": 3, "category": "Food"},
+    {"question": "How many colors are in a rainbow?", "choices": ["5", "6", "7", "8"], "correct": 2, "category": "Science"},
+    {"question": "What is the smallest country in the world?", "choices": ["Monaco", "Liechtenstein", "Vatican City", "San Marino"], "correct": 2, "category": "Geography"},
+    {"question": "Which big cat can roar but cannot purr?", "choices": ["Cheetah", "Puma", "Lion", "Jaguar"], "correct": 2, "category": "Animals"},
+    {"question": "How many teeth does an adult human normally have?", "choices": ["28", "30", "32", "34"], "correct": 2, "category": "Science"},
+    {"question": "Which metal is liquid at room temperature?", "choices": ["Lead", "Tin", "Mercury", "Silver"], "correct": 2, "category": "Science"},
+    {"question": "What is the longest river in the world?", "choices": ["Amazon", "Nile", "Yangtze", "Mississippi"], "correct": 1, "category": "Geography"},
+    {"question": "How many legs does a spider have?", "choices": ["6", "8", "10", "12"], "correct": 1, "category": "Animals"},
+    {"question": "Which planet has rings around it?", "choices": ["Mars", "Venus", "Jupiter", "Saturn"], "correct": 3, "category": "Space"},
+]
+
+CATEGORY_COLORS = {
+    "Science":   (52,  152, 219),
+    "Animals":   (46,  204, 113),
+    "Geography": (230, 126,  34),
+    "Space":     (155,  89, 182),
+    "Math":      (231,  76,  60),
+    "Music":     (241, 196,  15),
+    "Sports":    (26,  188, 156),
+    "Food":      (243, 156,  18),
+    "History":   (189, 195, 199),
+    "Technology":(52,  73,  94),
+}
+
+
+def generate_trivia_questions():
+    """Groq ile 10 genel kültür sorusu üret; başarısız olursa fallback kullan."""
+    try:
+        from groq import Groq
+        import json as _json
+        client = Groq(api_key=GROQ_API_KEY)
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content":
+                "Generate 10 multiple choice trivia questions for ages 11-17 (middle/high school level).\n"
+                "Topics: science, animals, geography, history, space, nature, technology, food, sports.\n"
+                "Rules: interesting, educational, family-friendly, not too easy, not university level.\n"
+                "Return ONLY a valid JSON array, no other text:\n"
+                '[{"question":"...","choices":["A","B","C","D"],"correct":0,"category":"Science"}]\n'
+                "correct is the 0-based index of the correct answer. Generate exactly 10 questions."}]
+        )
+        text  = resp.choices[0].message.content.strip()
+        start = text.find('[')
+        end   = text.rfind(']') + 1
+        qs    = _json.loads(text[start:end])
+        if len(qs) >= 10:
+            print("[OK] Groq ile 10 soru uretildi.")
+            return qs[:10]
+        raise ValueError("Yetersiz soru")
+    except Exception as e:
+        print(f"[WARN] Groq soru uretimi hatasi ({e}). Fallback kullaniliyor.")
+        return random.sample(TRIVIA_FALLBACK, min(10, len(TRIVIA_FALLBACK)))
+
+
+def make_trivia_frame(q_data, question_num, total, revealed, bg_img=None, bar_progress=None):
+    """
+    q_data   : {"question":..., "choices":[...], "correct":0, "category":...}
+    revealed : True ise doğru=yeşil, yanlış=kırmızı
+    """
+    if bg_img:
+        img = bg_img.copy()
+    else:
+        img = Image.new("RGB", (W, H), (12, 12, 28))
+
+    overlay_col, text_col, accent_col = get_overlay_and_text_colors(bg_img)
+    overlay = Image.new("RGBA", (W, H), overlay_col)
+    img = img.convert("RGBA")
+    img = Image.alpha_composite(img, overlay)
+    img = img.convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    # ── Başlık ──────────────────────────────────────────────
+    f_title = load_font(72, bold=True)
+    title   = "TRIVIA QUIZ"
+    bbox = draw.textbbox((0, 0), title, font=f_title)
+    tx   = (W - (bbox[2] - bbox[0])) // 2
+    draw.text((tx + 3, 53), title, font=f_title, fill=(0, 0, 0))
+    draw.text((tx, 50),     title, font=f_title, fill=accent_col)
+
+    # ── Progress bar ────────────────────────────────────────
+    bar_x, bar_y, bar_w, bar_h = 60, 145, W - 120, 18
+    draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 40, 60))
+    progress = bar_progress if bar_progress is not None else question_num / total
+    filled   = int(bar_w * progress)
+    if filled > 0:
+        draw.rectangle([bar_x, bar_y, bar_x + filled, bar_y + bar_h], fill=accent_col)
+
+    # ── Kategori rozeti ─────────────────────────────────────
+    category  = q_data.get("category", "General")
+    cat_color = CATEGORY_COLORS.get(category, (100, 100, 100))
+    f_cat     = load_font(34, bold=True)
+    cat_text  = f"● {category.upper()}"
+    bbox_c    = draw.textbbox((0, 0), cat_text, font=f_cat)
+    cw        = bbox_c[2] - bbox_c[0]
+    cx        = (W - cw) // 2
+    draw.rounded_rectangle([cx - 20, 178, cx + cw + 20, 224], radius=18, fill=cat_color)
+    draw.text((cx, 182), cat_text, font=f_cat, fill="white")
+
+    # ── Soru metni (sarmalanmış) ─────────────────────────────
+    f_q     = load_font(52, bold=True)
+    q_text  = q_data["question"]
+    q_words = q_text.split()
+    q_lines, cur = [], ""
+    for word in q_words:
+        test = (cur + " " + word).strip()
+        if draw.textbbox((0, 0), test, font=f_q)[2] > W - 80 and cur:
+            q_lines.append(cur)
+            cur = word
+        else:
+            cur = test
+    if cur:
+        q_lines.append(cur)
+
+    line_h = 68
+    total_q_h = len(q_lines) * line_h
+    q_start_y = 260 + max(0, (280 - total_q_h) // 2)
+    for line in q_lines:
+        bbox_l = draw.textbbox((0, 0), line, font=f_q)
+        lx = (W - (bbox_l[2] - bbox_l[0])) // 2
+        draw.text((lx + 2, q_start_y + 2), line, font=f_q, fill=(0, 0, 0))
+        draw.text((lx, q_start_y),         line, font=f_q, fill=text_col)
+        q_start_y += line_h
+
+    # ── Soru numarası ────────────────────────────────────────
+    f_num  = load_font(40, bold=False)
+    num_t  = f"Question {question_num}/{total}"
+    bbox_n = draw.textbbox((0, 0), num_t, font=f_num)
+    draw.text(((W - (bbox_n[2] - bbox_n[0])) // 2, 568),
+              num_t, font=f_num, fill=(160, 160, 160))
+
+    # ── 4 Şık (2×2 grid) ────────────────────────────────────
+    labels   = ["A", "B", "C", "D"]
+    correct  = q_data["correct"]
+    btn_w    = 472
+    btn_h    = 155
+    gap_x    = 24
+    gap_y    = 24
+    start_x  = (W - btn_w * 2 - gap_x) // 2
+    start_y  = 640
+    f_lbl    = load_font(54, bold=True)
+    f_opt    = load_font(38, bold=False)
+    f_opt_sm = load_font(30, bold=False)
+
+    for i, choice_text in enumerate(q_data["choices"]):
+        col = i % 2
+        row = i // 2
+        bx  = start_x + col * (btn_w + gap_x)
+        by  = start_y + row * (btn_h + gap_y)
+
+        if not revealed:
+            bg_col     = (35, 35, 58)
+            lbl_col    = accent_col
+            txt_col    = (220, 220, 220)
+            border_col = (70, 70, 100)
+        elif i == correct:
+            bg_col     = (25, 150, 65)
+            lbl_col    = (255, 255, 255)
+            txt_col    = (255, 255, 255)
+            border_col = (50, 220, 100)
+        else:
+            bg_col     = (70, 25, 25)
+            lbl_col    = (180, 80, 80)
+            txt_col    = (130, 130, 130)
+            border_col = (100, 40, 40)
+
+        draw.rounded_rectangle([bx, by, bx + btn_w, by + btn_h],
+                                radius=22, fill=bg_col, outline=border_col, width=3)
+        draw.text((bx + 20, by + (btn_h - 60) // 2), labels[i], font=f_lbl, fill=lbl_col)
+
+        div_x = bx + 82
+        draw.line([(div_x, by + 18), (div_x, by + btn_h - 18)], fill=border_col, width=2)
+
+        name_x     = div_x + 16
+        max_name_w = bx + btn_w - name_x - 60
+        bbox_ch    = draw.textbbox((0, 0), choice_text, font=f_opt)
+        f_use      = f_opt if bbox_ch[2] - bbox_ch[0] <= max_name_w else f_opt_sm
+        name_y     = by + (btn_h - (46 if f_use == f_opt else 34)) // 2
+        draw.text((name_x, name_y), choice_text, font=f_use, fill=txt_col)
+
+        # Doğru cevaba mavi tik
+        if revealed and i == correct:
+            ts = 46
+            tx = bx + btn_w - ts - 14
+            ty = by + (btn_h - ts) // 2
+            draw.ellipse([tx, ty, tx + ts, ty + ts], fill=(29, 155, 240))
+            draw.line([(tx + ts*0.22, ty + ts*0.52), (tx + ts*0.44, ty + ts*0.72)],
+                      fill="white", width=max(2, int(ts*0.13)))
+            draw.line([(tx + ts*0.44, ty + ts*0.72), (tx + ts*0.78, ty + ts*0.28)],
+                      fill="white", width=max(2, int(ts*0.13)))
+
+    return img
+
+
+def create_trivia_video(questions):
+    """Genel kültür quiz videosu oluştur."""
+    bg_img = load_background()
+    print("Trivia video olusturuluyor...")
+    clips = []
+
+    import numpy as np
+    from moviepy.audio.AudioClip import AudioArrayClip, CompositeAudioClip
+    from moviepy.editor import AudioFileClip as AFC
+
+    SR        = 44100
+    tick_mp3  = os.path.join(script_dir, "tick.mp3")
+    tick_clip = AFC(tick_mp3).volumex(0.7) if os.path.exists(tick_mp3) else None
+
+    def make_ding(freq=1100, dur=0.25, volume=0.85):
+        t      = np.linspace(0, dur, int(SR * dur), endpoint=False)
+        wave   = np.sin(2 * np.pi * freq * t) * np.linspace(1, 0, int(SR * dur)) * volume
+        stereo = np.column_stack([wave, wave]).astype(np.float32)
+        return AudioArrayClip(stereo, fps=SR)
+
+    audio_clips = []
+    elapsed     = 0.0
+    total       = len(questions)
+
+    for i, q in enumerate(questions):
+        prev_p = i / total
+        cur_p  = (i + 1) / total
+
+        # Bar animasyonu (0.4 sn)
+        anim_steps = 8
+        anim_dur   = 0.4 / anim_steps
+        for step in range(anim_steps):
+            p     = prev_p + (cur_p - prev_p) * (step + 1) / anim_steps
+            f_img = make_trivia_frame(q, i + 1, total, False, bg_img, bar_progress=p)
+            clips.append(ImageClip(np.array(f_img), duration=anim_dur))
+        elapsed += 0.4
+
+        # Soru frame (2.6 sn)
+        q_img  = make_trivia_frame(q, i + 1, total, False, bg_img, bar_progress=cur_p)
+        q_clip = ImageClip(np.array(q_img), duration=2.6)
+        clips.append(q_clip)
+        if tick_clip:
+            seg = tick_clip.subclip(0, min(2.6, tick_clip.duration))
+            audio_clips.append(seg.set_start(elapsed))
+        elapsed += 2.6
+
+        # Reveal frame (1.5 sn)
+        r_img  = make_trivia_frame(q, i + 1, total, True, bg_img, bar_progress=cur_p)
+        r_clip = ImageClip(np.array(r_img), duration=1.5)
+        clips.append(r_clip)
+        audio_clips.append(make_ding().set_start(elapsed))
+        elapsed += 1.5
+
+    # ── Outro frame (3 sn) ──────────────────────────────────
+    if bg_img:
+        outro_img = bg_img.copy()
+    else:
+        outro_img = Image.new("RGB", (W, H), (12, 12, 28))
+    overlay_col, text_col, accent_col = get_overlay_and_text_colors(bg_img)
+    outro_overlay = Image.new("RGBA", (W, H), overlay_col)
+    outro_img = outro_img.convert("RGBA")
+    outro_img = Image.alpha_composite(outro_img, outro_overlay)
+    outro_img = outro_img.convert("RGB")
+    odraw = ImageDraw.Draw(outro_img)
+
+    # Büyük emoji-style score icon (daire)
+    cx_o, cy_o, r_o = W // 2, 620, 180
+    odraw.ellipse([cx_o - r_o, cy_o - r_o, cx_o + r_o, cy_o + r_o],
+                  fill=(29, 155, 240))
+    # Tik içinde — tek polyline, birleşim noktası boşluk bırakmaz
+    ts = int(r_o * 1.2)
+    ttx = cx_o - ts // 2
+    tty = cy_o - ts // 2
+    tp1 = (int(ttx + ts*0.18), int(tty + ts*0.52))
+    tp2 = (int(ttx + ts*0.42), int(tty + ts*0.74))
+    tp3 = (int(ttx + ts*0.80), int(tty + ts*0.26))
+    lw  = max(5, int(ts * 0.09))
+    odraw.line([tp1, tp2, tp3], fill="white", width=lw)
+    # Köşe noktasına dolu daire — PIL kalın çizgi bıraktığı boşluğu kapat
+    r_j = lw // 2
+    odraw.ellipse([tp2[0]-r_j, tp2[1]-r_j, tp2[0]+r_j, tp2[1]+r_j], fill="white")
+
+    f_o1 = load_font(72, bold=True)
+    f_o2 = load_font(52, bold=False)
+    f_o3 = load_font(46, bold=True)
+
+    line1 = "Quiz Complete!"
+    bbox1 = odraw.textbbox((0, 0), line1, font=f_o1)
+    odraw.text(((W - (bbox1[2] - bbox1[0])) // 2 + 3, 853), line1, font=f_o1, fill=(0, 0, 0))
+    odraw.text(((W - (bbox1[2] - bbox1[0])) // 2,     850), line1, font=f_o1, fill=accent_col)
+
+    line2 = "How many did you get right?"
+    bbox2 = odraw.textbbox((0, 0), line2, font=f_o2)
+    odraw.text(((W - (bbox2[2] - bbox2[0])) // 2 + 2, 962), line2, font=f_o2, fill=(0, 0, 0))
+    odraw.text(((W - (bbox2[2] - bbox2[0])) // 2,     960), line2, font=f_o2, fill=(255, 255, 255))
+
+    line3 = "Comment your score below!"
+    bbox3 = odraw.textbbox((0, 0), line3, font=f_o2)
+    odraw.text(((W - (bbox3[2] - bbox3[0])) // 2,    1048), line3, font=f_o2, fill=(200, 200, 200))
+
+    # Subscribe + like reminder box
+    box_y = 1160
+    odraw.rounded_rectangle([80, box_y, W - 80, box_y + 260], radius=32,
+                             fill=(35, 35, 58), outline=(70, 70, 110), width=3)
+    sub_line1 = "Subscribe for a new quiz every day!"
+    sub_line2 = "Don't forget to LIKE this video!"
+    bbox_s1 = odraw.textbbox((0, 0), sub_line1, font=f_o3)
+    bbox_s2 = odraw.textbbox((0, 0), sub_line2, font=f_o3)
+    odraw.text(((W - (bbox_s1[2] - bbox_s1[0])) // 2, box_y + 36),
+               sub_line1, font=f_o3, fill=(255, 80, 80))
+    odraw.text(((W - (bbox_s2[2] - bbox_s2[0])) // 2, box_y + 112),
+               sub_line2, font=f_o3, fill=(29, 155, 240))
+
+    # Like + sub icon row
+    icon_y = box_y + 175
+    icon_cx = W // 2
+    # Red subscribe pill
+    odraw.rounded_rectangle([icon_cx - 220, icon_y, icon_cx - 20, icon_y + 60],
+                             radius=14, fill=(200, 0, 0))
+    f_icon = load_font(34, bold=True)
+    sub_t = "SUBSCRIBE"
+    bbox_si = odraw.textbbox((0, 0), sub_t, font=f_icon)
+    odraw.text((icon_cx - 220 + (200 - (bbox_si[2] - bbox_si[0])) // 2, icon_y + 13),
+               sub_t, font=f_icon, fill="white")
+    # Blue like pill
+    odraw.rounded_rectangle([icon_cx + 20, icon_y, icon_cx + 160, icon_y + 60],
+                             radius=14, fill=(29, 155, 240))
+    like_t = "LIKE"
+    bbox_li = odraw.textbbox((0, 0), like_t, font=f_icon)
+    odraw.text((icon_cx + 20 + (140 - (bbox_li[2] - bbox_li[0])) // 2, icon_y + 13),
+               like_t, font=f_icon, fill="white")
+
+    clips.append(ImageClip(np.array(outro_img), duration=3.0))
+    # Ding sesi outro'da
+    def make_fanfare(freq=520, dur=0.5, volume=0.35):
+        t = np.linspace(0, dur, int(SR * dur), endpoint=False)
+        wave = (np.sin(2 * np.pi * freq * t) * 0.6 +
+                np.sin(2 * np.pi * freq * 1.25 * t) * 0.3 +
+                np.sin(2 * np.pi * freq * 1.5 * t) * 0.1) * np.linspace(1, 0, int(SR * dur)) * volume
+        stereo = np.column_stack([wave, wave]).astype(np.float32)
+        return AudioArrayClip(stereo, fps=SR)
+    audio_clips.append(make_fanfare().set_start(elapsed))
+
+    print("Video birlestiriliyor...")
+    final = concatenate_videoclips(clips, method="compose")
+    if audio_clips:
+        final = final.set_audio(CompositeAudioClip(audio_clips))
+
+    out = os.path.join(script_dir, "trivia_quiz.mp4")
+    final.write_videofile(out, fps=24, codec="libx264", logger=None)
+    print(f"[OK] Video hazir: {out}")
+    return out
+
+
+def upload_to_youtube_trivia():
+    """Trivia quiz videosunu YouTube'a yükle."""
+    import base64 as _b64, json as _json
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaFileUpload
+
+    token_env = os.environ.get("TOKEN_JSON", "")
+    if token_env:
+        try:    token_data = _b64.b64decode(token_env).decode()
+        except: token_data = token_env
+        with open(TOKEN_PATH, "w") as f:
+            f.write(token_data)
+
+    SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
+    with open(TOKEN_PATH) as f:
+        td = _json.load(f)
+    creds = Credentials(
+        token=td.get("token"), refresh_token=td.get("refresh_token"),
+        token_uri=td.get("token_uri", "https://oauth2.googleapis.com/token"),
+        client_id=td.get("client_id"), client_secret=td.get("client_secret"),
+        scopes=SCOPES
+    )
+
+    hooks = [
+        "How smart are you really? 🧠",
+        "Can you score 10/10? Most people can't!",
+        "Test your knowledge — pause before the answer!",
+        "Only 1 in 10 gets all of these right",
+        "How many can YOU get? 🤔",
+    ]
+    hook = random.choice(hooks)
+    try:
+        from groq import Groq
+        client = Groq(api_key=GROQ_API_KEY)
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content":
+                f'YouTube Shorts title for a 10-question general knowledge trivia quiz (middle/high school level). '
+                f'Hook: "{hook}". Max 60 chars, end with #Shorts, scroll-stopping. ONLY THE TITLE:'}]
+        )
+        title = resp.choices[0].message.content.strip().replace('"', '').strip() or hook + " #Shorts"
+    except Exception as e:
+        print(f"[WARN] Groq baslik hatasi: {e}")
+        title = hook + " #Shorts"
+
+    out_path = os.path.join(script_dir, "trivia_quiz.mp4")
+    desc = (
+        "10 trivia questions — science, geography, animals, space & more!\n\n"
+        "Can you score 10/10? Pause before the reveal and test yourself! 🧠\n\n"
+        "Comment your score below! 👇\n"
+        "🔔 Subscribe for a new quiz every day!\n\n"
+        "#Shorts #trivia #quiz #generalknowledge #science #geography "
+        "#educational #quiztime #knowledge #viral"
+    )
+    tags = ["trivia", "general knowledge", "quiz", "shorts", "science quiz",
+            "geography quiz", "educational", "knowledge test", "school quiz",
+            "10 questions", "trivia challenge", "smart quiz"]
+
+    print(f"Baslik: {title}")
+    yt   = build('youtube', 'v3', credentials=creds)
+    body = {
+        'snippet': {'title': title[:100], 'description': desc,
+                    'tags': tags, 'categoryId': '27'},
+        'status':  {'privacyStatus': 'public', 'selfDeclaredMadeForKids': False}
+    }
+    try:
+        media = MediaFileUpload(out_path, mimetype='video/mp4', resumable=True)
+        req   = yt.videos().insert(part='snippet,status', body=body, media_body=media)
+        response = None
+        while response is None:
+            status, response = req.next_chunk()
+            if status:
+                print(f"  %{int(status.progress() * 100)}")
+        video_id = response['id']
+        print(f"\n[OK] Yayinlandi! https://youtube.com/shorts/{video_id}")
+        return video_id
+    except Exception as e:
+        print(f"[ERROR] YouTube yukleme hatasi: {e}")
+        return None
+
+
+# ─────────────────────────────────────────────────────────────
 # 4 ŞIKLI MULTIPLE CHOICE QUIZ
 # ─────────────────────────────────────────────────────────────
 
@@ -1094,7 +1545,7 @@ def get_distractors(correct_code, n=3):
 
 
 def make_multichoice_frame(flag_img, question_num, total, choices, revealed,
-                           correct_idx, bg_img=None):
+                           correct_idx, bg_img=None, bar_progress=None):
     """
     choices    : [(code, name), (code, name), (code, name), (code, name)]
     revealed   : True ise doğru=yeşil, yanlış=kırmızı
@@ -1122,7 +1573,8 @@ def make_multichoice_frame(flag_img, question_num, total, choices, revealed,
     # ── İlerleme çubuğu ─────────────────────────────────────
     bar_x, bar_y, bar_w, bar_h = 60, 145, W - 120, 18
     draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 40, 60))
-    filled = int(bar_w * question_num / total)
+    progress = bar_progress if bar_progress is not None else question_num / total
+    filled = int(bar_w * progress)
     if filled > 0:
         draw.rectangle([bar_x, bar_y, bar_x + filled, bar_y + bar_h], fill=accent_col)
 
@@ -1210,11 +1662,16 @@ def make_multichoice_frame(flag_img, question_num, total, choices, revealed,
             name_y = by + (btn_h - 46) // 2
         draw.text((name_x, name_y), name, font=f_use, fill=txt_col)
 
-        # Doğru cevapta ✓ işareti
+        # Doğru cevapta mavi tik rozeti
         if revealed and i == correct_idx:
-            f_chk = load_font(52, bold=True)
-            draw.text((bx + btn_w - 58, by + (btn_h - 56) // 2),
-                      "✓", font=f_chk, fill=(150, 255, 150))
+            ts = 46
+            tx = bx + btn_w - ts - 16
+            ty = by + (btn_h - ts) // 2
+            draw.ellipse([tx, ty, tx + ts, ty + ts], fill=(29, 155, 240))
+            draw.line([(tx + ts*0.22, ty + ts*0.52), (tx + ts*0.44, ty + ts*0.72)],
+                      fill="white", width=max(2, int(ts*0.13)))
+            draw.line([(tx + ts*0.44, ty + ts*0.72), (tx + ts*0.78, ty + ts*0.28)],
+                      fill="white", width=max(2, int(ts*0.13)))
 
     return img
 
@@ -1262,19 +1719,34 @@ def create_multichoice_video(questions):
         choices, correct_idx = choices_list[i]
         flag_img = flags[code]
 
-        # Soru frame (3 sn)
-        q_img = make_multichoice_frame(flag_img, i + 1, len(questions),
-                                       choices, False, correct_idx, bg_img)
-        q_clip = ImageClip(np.array(q_img), duration=3.0)
+        # Bar animasyonu: önceki konumdan bu soruya kadar 0.4 sn'de doldur
+        prev_progress = i / len(questions)
+        cur_progress  = (i + 1) / len(questions)
+        anim_steps    = 8
+        anim_dur      = 0.4 / anim_steps
+        for step in range(anim_steps):
+            p = prev_progress + (cur_progress - prev_progress) * (step + 1) / anim_steps
+            f_img = make_multichoice_frame(flag_img, i + 1, len(questions),
+                                           choices, False, correct_idx, bg_img,
+                                           bar_progress=p)
+            clips.append(ImageClip(np.array(f_img), duration=anim_dur))
+        elapsed += 0.4
+
+        # Soru frame (2.6 sn — toplam soru süresi = 3 sn)
+        q_img  = make_multichoice_frame(flag_img, i + 1, len(questions),
+                                        choices, False, correct_idx, bg_img,
+                                        bar_progress=cur_progress)
+        q_clip = ImageClip(np.array(q_img), duration=2.6)
         clips.append(q_clip)
         if tick_clip:
-            seg = tick_clip.subclip(0, min(3.0, tick_clip.duration))
+            seg = tick_clip.subclip(0, min(2.6, tick_clip.duration))
             audio_clips.append(seg.set_start(elapsed))
-        elapsed += 3.0
+        elapsed += 2.6
 
         # Reveal frame (1.5 sn)
-        r_img = make_multichoice_frame(flag_img, i + 1, len(questions),
-                                       choices, True, correct_idx, bg_img)
+        r_img  = make_multichoice_frame(flag_img, i + 1, len(questions),
+                                        choices, True, correct_idx, bg_img,
+                                        bar_progress=cur_progress)
         r_clip = ImageClip(np.array(r_img), duration=1.5)
         clips.append(r_clip)
         audio_clips.append(make_ding().set_start(elapsed))
@@ -1408,16 +1880,17 @@ def save_run_log(status, video_id=None, title=None, error=None, mode=None):
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import json
+    TEST_MODE = "--test" in sys.argv
 
-    # Mod dosyasını oku — flag → brainrot → capital → multichoice → flag → ...
-    MODES = ["flag", "brainrot", "capital", "multichoice"]
+    # Mod dosyasını oku — brainrot → flag → multichoice → trivia → brainrot → ...
+    MODES = ["brainrot", "flag", "multichoice", "trivia"]
     if os.path.exists(MODE_FILE):
         with open(MODE_FILE, 'r') as f:
-            last_mode = json.load(f).get("last_mode", "capital")
+            last_mode = json.load(f).get("last_mode", "trivia")
     else:
-        last_mode = "capital"
+        last_mode = "trivia"
 
-    last_idx = MODES.index(last_mode) if last_mode in MODES else 2
+    last_idx = MODES.index(last_mode) if last_mode in MODES else 3
     quiz_mode = MODES[(last_idx + 1) % len(MODES)]
 
     # Yeni modu kaydet
@@ -1433,22 +1906,40 @@ if __name__ == "__main__":
         questions = pick_capital_questions()
     elif quiz_mode == "multichoice":
         questions = pick_questions()   # flag sorularını kullan, şıklar kod içinde üretiliyor
+    elif quiz_mode == "trivia":
+        questions = generate_trivia_questions()
     else:
         questions = pick_brainrot_questions()
 
-    print("Secilen sorular:")
-    for i, (key, name, diff) in enumerate(questions):
-        print(f"  {i+1}. {name} ({diff})")
+    if quiz_mode == "trivia":
+        print("Uretilen sorular:")
+        for i, q in enumerate(questions):
+            print(f"  {i+1}. [{q.get('category','')}] {q['question']}")
+    else:
+        print("Secilen sorular:")
+        for i, (key, name, diff) in enumerate(questions):
+            print(f"  {i+1}. {name} ({diff})")
     print()
 
     if quiz_mode == "multichoice":
         create_multichoice_video(questions)
+    elif quiz_mode == "trivia":
+        create_trivia_video(questions)
     else:
         create_video(questions, quiz_mode=quiz_mode)
 
     bot_labels = {"flag": "Flag Quiz", "brainrot": "Brainrot Quiz",
-                  "capital": "Capital Quiz", "multichoice": "4-Choice Quiz"}
+                  "capital": "Capital Quiz", "multichoice": "4-Choice Flag Quiz",
+                  "trivia": "Trivia Quiz"}
     bot_label = bot_labels.get(quiz_mode, quiz_mode)
+    out_paths  = {"flag": OUTPUT_VIDEO, "brainrot": OUTPUT_VIDEO_BRAINROT,
+                  "capital": OUTPUT_VIDEO_CAPITAL, "multichoice": OUTPUT_VIDEO_MULTICHOICE,
+                  "trivia": OUTPUT_VIDEO_TRIVIA}
+
+    if TEST_MODE:
+        print("\n[TEST] YouTube yuklemesi atlandi.")
+        print(f"[TEST] Video: {out_paths.get(quiz_mode, OUTPUT_VIDEO)}")
+        sys.exit(0)
 
     if quiz_mode == "flag":
         video_id = upload_to_youtube(questions)
@@ -1456,6 +1947,8 @@ if __name__ == "__main__":
         video_id = upload_to_youtube_capital(questions)
     elif quiz_mode == "multichoice":
         video_id = upload_to_youtube_multichoice(questions)
+    elif quiz_mode == "trivia":
+        video_id = upload_to_youtube_trivia()
     else:
         video_id = upload_to_youtube_brainrot(questions)
 
@@ -1469,8 +1962,6 @@ if __name__ == "__main__":
         save_run_log("error", error="YouTube upload failed", mode=quiz_mode)
         send_telegram(f"❌ <b>flaq_quiz ({bot_label})</b> YouTube yüklemesi başarısız!")
 
-    out_paths = {"flag": OUTPUT_VIDEO, "brainrot": OUTPUT_VIDEO_BRAINROT,
-                 "capital": OUTPUT_VIDEO_CAPITAL, "multichoice": OUTPUT_VIDEO_MULTICHOICE}
     out_path = out_paths.get(quiz_mode, OUTPUT_VIDEO)
     print("\n=== Tamamlandi! ===")
     print(f"Video: {out_path}")

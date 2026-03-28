@@ -803,14 +803,16 @@ def upload_to_youtube(questions):
     desc = (
         "Can you name all 10 country flags? Easy → Expert difficulty!\n\n"
         "3 Easy | 3 Medium | 3 Hard | 1 Expert\n\n"
-        "How many did you get right? Comment below!\n\n"
-        "#shorts #flagquiz #geography #flags #quiz #worldflags #countryflags "
-        "#geographyquiz #trivia #challenge"
+        "How many did you get right? Comment below! 👇\n"
+        "🔔 Subscribe for a new quiz every day!\n\n"
+        "#Shorts #flagquiz #geography #flags #quiz #worldflags #countryflags "
+        "#geographyquiz #trivia #challenge #quiztime #viral"
     )
     tags = [
         "flag quiz", "flags", "geography", "world flags", "country flags",
         "quiz", "shorts", "geography quiz", "flag challenge", "educational",
-        "trivia", "flag game", "country quiz"
+        "trivia", "flag game", "country quiz", "geography challenge",
+        "flag identification", "world geography", "quiz challenge"
     ]
 
     print(f"Baslik: {title}")
@@ -919,9 +921,10 @@ def upload_to_youtube_brainrot(questions):
     desc = (
         "Can you name all 10 brainrot characters? Easy → Expert difficulty!\n\n"
         "3 Easy | 3 Medium | 3 Hard | 1 Expert\n\n"
-        "How many did you get right? Comment below!\n\n"
-        "#shorts #brainrot #quiz #brainrotquiz #viral "
-        "#tralalero #bombardiro #tungsung #brainrotcharacters"
+        "How many did you get right? Comment below! 👇\n"
+        "🔔 Subscribe for a new quiz every day!\n\n"
+        "#Shorts #brainrot #quiz #brainrotquiz #viral "
+        "#tralalero #bombardiro #tungsung #brainrotcharacters #quiztime"
     )
     tags = [
         "brainrot", "brainrot quiz", "brainrot characters", "quiz", "shorts",
@@ -1035,9 +1038,10 @@ def upload_to_youtube_capital(questions):
     desc = (
         "Can you name all 10 world capitals? Easy → Expert difficulty!\n\n"
         "3 Easy | 3 Medium | 3 Hard | 1 Expert\n\n"
-        "How many did you get right? Comment below!\n\n"
-        "#shorts #capitalquiz #geography #worldcapitals #quiz "
-        "#geographyquiz #trivia #capitals #educational #school"
+        "How many did you get right? Comment below! 👇\n"
+        "🔔 Subscribe for a new quiz every day!\n\n"
+        "#Shorts #capitalquiz #geography #worldcapitals #quiz "
+        "#geographyquiz #trivia #capitals #educational #school #quiztime"
     )
     tags = [
         "capital quiz", "world capitals", "geography", "capitals", "quiz",

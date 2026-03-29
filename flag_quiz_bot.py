@@ -362,34 +362,31 @@ def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
 
     # ── HOOK METNİ (ortada büyük, dikkat çekici) ─────────────
     hook_lines = {
-        "flag":       ["Can YOU get", "10/10? 🤔"],
-        "brainrot":   ["Do you know", "all of them? 👀"],
-        "capital":    ["Can you name", "every capital? 🌍"],
-        "multichoice":["Can YOU get", "10/10? 🤔"],
-        "trivia":     ["How smart", "are you really? 🧠"],
+        "flag":        ["Can YOU get", "10/10?"],
+        "brainrot":    ["Do you know", "all of them?"],
+        "capital":     ["Can you name", "every capital?"],
+        "multichoice": ["Can YOU get", "10/10?"],
+        "trivia":      ["How smart", "are you really?"],
     }
-    lines = hook_lines.get(quiz_mode, ["Can YOU get", "10/10? 🤔"])
+    lines = hook_lines.get(quiz_mode, ["Can YOU get", "10/10?"])
 
     f_hook = load_font(88, bold=True)
     hook_y = H - 680
     for line in lines:
         bbox_h = draw.textbbox((0, 0), line, font=f_hook)
         hx = (W - (bbox_h[2] - bbox_h[0])) // 2
-        # Koyu arka plan bloğu
-        draw.rectangle([hx - 20, hook_y - 8, hx + (bbox_h[2]-bbox_h[0]) + 20, hook_y + (bbox_h[3]-bbox_h[1]) + 8],
-                       fill=(0, 0, 0, 160))
-        # Siyah outline
-        for dx, dy in [(-3,0),(3,0),(0,-3),(0,3)]:
+        for dx, dy in [(-3,0),(3,0),(0,-3),(0,3),(-2,-2),(2,2),(-2,2),(2,-2)]:
             draw.text((hx+dx, hook_y+dy), line, font=f_hook, fill=(0, 0, 0))
         draw.text((hx, hook_y), line, font=f_hook, fill=(255, 255, 255))
         hook_y += (bbox_h[3] - bbox_h[1]) + 12
 
-    # Alt — "Comment your score 👇"
+    # Alt — "Comment your score below!"
     f_cta = load_font(52, bold=True)
-    cta = "Comment your score 👇"
+    cta = "Comment your score below!"
     bbox_c = draw.textbbox((0, 0), cta, font=f_cta)
     cx2 = (W - (bbox_c[2] - bbox_c[0])) // 2
-    draw.text((cx2 + 2, H - 160), cta, font=f_cta, fill=(0, 0, 0))
+    for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+        draw.text((cx2+dx, H-162+dy), cta, font=f_cta, fill=(0, 0, 0))
     draw.text((cx2, H - 162), cta, font=f_cta, fill=accent_col)
 
     return img
@@ -431,15 +428,6 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
     draw.text((tx+3, 53), title, font=f_title, fill=(0,0,0))
     draw.text((tx, 50), title, font=f_title, fill=accent_col)
 
-    # ── Canlı skor sayacı (sağ üst) ─────────────────────────
-    f_score = load_font(52, bold=True)
-    score_str = f"SCORE: {score}/10"
-    score_col = (80, 220, 100) if score >= 8 else (255, 220, 50) if score >= 5 else (255, 255, 255)
-    bbox_sc = draw.textbbox((0, 0), score_str, font=f_score)
-    sx_score = W - (bbox_sc[2] - bbox_sc[0]) - 30
-    draw.text((sx_score + 2, 52), score_str, font=f_score, fill=(0, 0, 0))
-    draw.text((sx_score, 50), score_str, font=f_score, fill=score_col)
-
     # ── İlerleme çubuğu ──────────────────────────────────────
     bar_x, bar_y, bar_w, bar_h = 60, 145, W-120, 18
     draw.rectangle([bar_x, bar_y, bar_x+bar_w, bar_y+bar_h],
@@ -450,6 +438,7 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
     if filled > 0:
         draw.rectangle([bar_x, bar_y, bar_x+filled, bar_y+bar_h],
                        fill=accent_col)
+
 
     # ── Bayrak görseli (merkez üst) ───────────────────────────
     flag_area_y = 190
@@ -526,8 +515,8 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
         note = f"Which country? ({current_idx+1}/10)"
     bbox = draw.textbbox((0,0), note, font=f_note)
     nx = (W - (bbox[2]-bbox[0])) // 2
-    draw.text((nx+2, H-128), note, font=f_note, fill=(0,0,0))
-    draw.text((nx, H-130), note, font=f_note, fill=text_col)
+    draw.text((nx+2, H-408), note, font=f_note, fill=(0,0,0))
+    draw.text((nx, H-410), note, font=f_note, fill=text_col)
 
     # ── Sayaç (alt orta, büyük renkli) ───────────────────────
     if countdown is not None:
@@ -666,13 +655,13 @@ def create_video(questions, quiz_mode="flag"):
     f_end  = load_font(72, bold=True)
     f_end2 = load_font(56, bold=True)
     # Satır 1
-    line1 = "Comment your score! 👇"
+    line1 = "Comment your score below!"
     bbox1 = img_end_draw.textbbox((0,0), line1, font=f_end)
     ex1 = (W - (bbox1[2]-bbox1[0])) // 2
     img_end_draw.text((ex1+3, H-240), line1, font=f_end, fill=(0,0,0))
     img_end_draw.text((ex1,   H-243), line1, font=f_end, fill=(255,220,50))
     # Satır 2
-    line2 = "LIKE if you got 10/10 ✅"
+    line2 = "LIKE if you got 10/10"
     bbox2 = img_end_draw.textbbox((0,0), line2, font=f_end2)
     ex2 = (W - (bbox2[2]-bbox2[0])) // 2
     img_end_draw.text((ex2+2, H-158), line2, font=f_end2, fill=(0,0,0))
@@ -699,19 +688,64 @@ def create_video(questions, quiz_mode="flag"):
         if t < total_dur:
             audio_clips.append(make_ding(freq=1200).set_start(t))
 
-    # Arka plan müziği ekle
-    music_path = os.path.join(script_dir, "music.mp3")
-    if os.path.exists(music_path):
+    # Arka plan müziği — NCS'ten rastgele indir (yt-dlp), çok düşük ses
+    SC_QUERIES = [
+        "scsearch1:NCS electronic instrumental upbeat",
+        "scsearch1:NCS gaming music no copyright",
+        "scsearch1:royalty free electronic quiz music",
+        "scsearch1:NCS release instrumental energetic",
+        "scsearch1:no copyright music upbeat electronic",
+        "scsearch1:NCS house music instrumental",
+        "scsearch1:copyright free background music quiz",
+    ]
+    tmp_music = os.path.join(script_dir, "_bg_music.mp3")
+    chosen_music = None
+    try:
+        import yt_dlp
+        try:
+            import imageio_ffmpeg
+            ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            ffmpeg_bin = "ffmpeg"
+
+        query = random.choice(SC_QUERIES)
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": tmp_music.replace(".mp3", ""),
+            "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
+            "ffmpeg_location": ffmpeg_bin,
+            "quiet": True,
+            "no_warnings": True,
+        }
+        print(f"Muzik indiriliyor (SoundCloud)...")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([query])
+        if os.path.exists(tmp_music):
+            chosen_music = tmp_music
+            print("Muzik indirildi.")
+    except Exception as e:
+        print(f"Muzik indirme hatasi: {e}")
+
+    if not chosen_music:
+        local = os.path.join(script_dir, "music.mp3")
+        if os.path.exists(local):
+            chosen_music = local
+            print("Yedek muzik kullaniliyor.")
+
+    if chosen_music:
         try:
             from moviepy.editor import AudioFileClip
-            bg = AudioFileClip(music_path)
-            start = random.randint(10, 30) if bg.duration > 40 else 0
+            bg = AudioFileClip(chosen_music)
+            start = random.randint(0, max(0, int(bg.duration) - int(total_dur) - 5))
             bg = bg.subclip(start, min(start + total_dur, bg.duration))
-            bg = bg.volumex(0.15)
+            bg = bg.volumex(0.08)   # çok düşük — efektler baskın kalsın
             audio_clips.append(bg)
             print("Muzik eklendi.")
         except Exception as e:
             print(f"Muzik eklenemedi: {e}")
+        finally:
+            try: os.remove(tmp_music)
+            except: pass
 
     if audio_clips:
         final = final.set_audio(CompositeAudioClip(audio_clips))

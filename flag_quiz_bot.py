@@ -307,14 +307,13 @@ def get_overlay_and_text_colors(bg_img):
 
 
 def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
-    """Sadece bayrak/karakter gösteren intro — cevap listesi yok, thumbnail için."""
+    """Hook frame — izleyiciyi ilk 2 saniyede yakala."""
     if bg_img:
         img = bg_img.copy()
     else:
         img = Image.new("RGB", (W, H), (12, 12, 28))
 
     overlay_col, text_col, accent_col = get_overlay_and_text_colors(bg_img)
-    # Intro'da overlay daha hafif olsun — bayrak daha net görünsün
     r, g, b, a = overlay_col
     overlay = Image.new("RGBA", (W, H), (r, g, b, max(0, a - 40)))
     img = img.convert("RGBA")
@@ -322,38 +321,32 @@ def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
     img = img.convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # Büyük üst başlık
-    f_title = load_font(96, bold=True)
+    # Üst başlık
+    f_title = load_font(80, bold=True)
     if quiz_mode == "brainrot":
         title = "BRAINROT QUIZ"
     elif quiz_mode == "capital":
         title = "CAPITAL QUIZ"
+    elif quiz_mode == "multichoice":
+        title = "FLAG QUIZ"
+    elif quiz_mode == "trivia":
+        title = "TRIVIA QUIZ"
     else:
         title = "FLAG QUIZ"
     bbox = draw.textbbox((0, 0), title, font=f_title)
     tx = (W - (bbox[2] - bbox[0])) // 2
-    draw.text((tx + 4, 72), title, font=f_title, fill=(0, 0, 0))
-    draw.text((tx, 68), title, font=f_title, fill=accent_col)
+    draw.text((tx + 4, 65), title, font=f_title, fill=(0, 0, 0))
+    draw.text((tx, 62), title, font=f_title, fill=accent_col)
 
-    # Soru sayısı chip
-    f_chip = load_font(52, bold=True)
-    chip = "10 CHARS" if quiz_mode == "brainrot" else "10 FLAGS"
-    bbox_c = draw.textbbox((0, 0), chip, font=f_chip)
-    cw = bbox_c[2] - bbox_c[0]
-    cx = (W - cw) // 2
-    draw.rounded_rectangle([cx - 24, 185, cx + cw + 24, 255], radius=22, fill=accent_col)
-    draw.text((cx, 190), chip, font=f_chip, fill=(0, 0, 0))
-
-    # Çok büyük bayrak (ekranın büyük kısmı)
+    # Büyük bayrak/görsel (ekran ortası)
     if flag_img:
         fw, fh = flag_img.size
-        max_w, max_h = 980, 660
+        max_w, max_h = 960, 580
         scale = min(max_w / fw, max_h / fh)
         nw, nh = int(fw * scale), int(fh * scale)
         flag_r = flag_img.resize((nw, nh), Image.Resampling.LANCZOS)
-        flag_y = 300
+        flag_y = 220
         border = 10
-        # Gölge efekti
         draw.rectangle(
             [(W // 2 - nw // 2 - border + 6, flag_y - border + 6),
              (W // 2 + nw // 2 + border + 6, flag_y + nh + border + 6)],
@@ -367,41 +360,43 @@ def make_intro_frame(flag_img, bg_img=None, quiz_mode="flag"):
         img.paste(flag_r, (W // 2 - nw // 2, flag_y),
                   flag_r if flag_r.mode == "RGBA" else None)
 
-    # Capital modunda bayrak altına ülke adını yaz
-    if quiz_mode == "capital" and flag_img:
-        # flag_img burada questions[0]'ın bayrağı — ülke adını COUNTRIES'ten al
-        pass  # ülke adı intro'da gösterilmiyor, sadece soru yazısında belirtiliyor
+    # ── HOOK METNİ (ortada büyük, dikkat çekici) ─────────────
+    hook_lines = {
+        "flag":       ["Can YOU get", "10/10? 🤔"],
+        "brainrot":   ["Do you know", "all of them? 👀"],
+        "capital":    ["Can you name", "every capital? 🌍"],
+        "multichoice":["Can YOU get", "10/10? 🤔"],
+        "trivia":     ["How smart", "are you really? 🧠"],
+    }
+    lines = hook_lines.get(quiz_mode, ["Can YOU get", "10/10? 🤔"])
 
-    # Alt soru metni
-    f_sub = load_font(62, bold=True)
-    if quiz_mode == "brainrot":
-        sub = "Name this character!"
-    elif quiz_mode == "capital":
-        sub = "What's the capital?"
-    else:
-        sub = "Which country is this?"
-    bbox2 = draw.textbbox((0, 0), sub, font=f_sub)
-    sx = (W - (bbox2[2] - bbox2[0])) // 2
-    draw.text((sx + 3, H - 260), sub, font=f_sub, fill=(0, 0, 0))
-    draw.text((sx, H - 263), sub, font=f_sub, fill=(255, 255, 255))
+    f_hook = load_font(88, bold=True)
+    hook_y = H - 680
+    for line in lines:
+        bbox_h = draw.textbbox((0, 0), line, font=f_hook)
+        hx = (W - (bbox_h[2] - bbox_h[0])) // 2
+        # Koyu arka plan bloğu
+        draw.rectangle([hx - 20, hook_y - 8, hx + (bbox_h[2]-bbox_h[0]) + 20, hook_y + (bbox_h[3]-bbox_h[1]) + 8],
+                       fill=(0, 0, 0, 160))
+        # Siyah outline
+        for dx, dy in [(-3,0),(3,0),(0,-3),(0,3)]:
+            draw.text((hx+dx, hook_y+dy), line, font=f_hook, fill=(0, 0, 0))
+        draw.text((hx, hook_y), line, font=f_hook, fill=(255, 255, 255))
+        hook_y += (bbox_h[3] - bbox_h[1]) + 12
 
-    # En alt tag
-    f_tag = load_font(44, bold=False)
-    if quiz_mode == "brainrot":
-        tag = "#brainrot  #shorts  #quiz"
-    elif quiz_mode == "capital":
-        tag = "#capitalquiz  #geography  #shorts"
-    else:
-        tag = "#flagquiz  #shorts  #geography"
-    bbox3 = draw.textbbox((0, 0), tag, font=f_tag)
-    draw.text(((W - (bbox3[2] - bbox3[0])) // 2, H - 170), tag,
-              font=f_tag, fill=(180, 180, 180))
+    # Alt — "Comment your score 👇"
+    f_cta = load_font(52, bold=True)
+    cta = "Comment your score 👇"
+    bbox_c = draw.textbbox((0, 0), cta, font=f_cta)
+    cx2 = (W - (bbox_c[2] - bbox_c[0])) // 2
+    draw.text((cx2 + 2, H - 160), cta, font=f_cta, fill=(0, 0, 0))
+    draw.text((cx2, H - 162), cta, font=f_cta, fill=accent_col)
 
     return img
 
 
 def make_frame(questions, current_idx, revealed_up_to, flag_img,
-               bar_progress=None, countdown=None, bg_img=None, quiz_mode="flag"):
+               bar_progress=None, countdown=None, bg_img=None, quiz_mode="flag", score=0):
     """
     questions      : [(code, name, diff), ...]
     current_idx    : şu an gösterilen bayrak (0-9)
@@ -435,6 +430,15 @@ def make_frame(questions, current_idx, revealed_up_to, flag_img,
     tx = (W - (bbox[2]-bbox[0])) // 2
     draw.text((tx+3, 53), title, font=f_title, fill=(0,0,0))
     draw.text((tx, 50), title, font=f_title, fill=accent_col)
+
+    # ── Canlı skor sayacı (sağ üst) ─────────────────────────
+    f_score = load_font(52, bold=True)
+    score_str = f"SCORE: {score}/10"
+    score_col = (80, 220, 100) if score >= 8 else (255, 220, 50) if score >= 5 else (255, 255, 255)
+    bbox_sc = draw.textbbox((0, 0), score_str, font=f_score)
+    sx_score = W - (bbox_sc[2] - bbox_sc[0]) - 30
+    draw.text((sx_score + 2, 52), score_str, font=f_score, fill=(0, 0, 0))
+    draw.text((sx_score, 50), score_str, font=f_score, fill=score_col)
 
     # ── İlerleme çubuğu ──────────────────────────────────────
     bar_x, bar_y, bar_w, bar_h = 60, 145, W-120, 18
@@ -626,6 +630,7 @@ def create_video(questions, quiz_mode="flag"):
     for i, (code, name, diff) in enumerate(questions):
         bar_start = i / n
         bar_end   = (i + 1) / n
+        score_so_far = i  # bu sorudan önce kaç cevap açıldı
         # 6 x 0.5sn = 3sn: sayaç 3→2→1
         countdown_map = {0:3, 1:3, 2:2, 3:2, 4:1, 5:1}
         steps = 6
@@ -634,7 +639,7 @@ def create_video(questions, quiz_mode="flag"):
             cd = countdown_map[s]
             img_q = make_frame(questions, i, i-1, flags[code],
                                bar_progress=progress, countdown=cd, bg_img=bg_img,
-                               quiz_mode=quiz_mode)
+                               quiz_mode=quiz_mode, score=score_so_far)
             path_q = f"_frame_q_{i}_{s}.jpg"
             img_q.save(path_q, quality=92)
             clips.append(ImageClip(path_q, duration=0.5))
@@ -647,25 +652,34 @@ def create_video(questions, quiz_mode="flag"):
         # Cevap reveal (1 sn) — ding sesi
         img_a = make_frame(questions, i, i, flags[code],
                            bar_progress=bar_end, countdown=None, bg_img=bg_img,
-                           quiz_mode=quiz_mode)
+                           quiz_mode=quiz_mode, score=i+1)
         path_a = f"_frame_a_{i}.jpg"
         img_a.save(path_a, quality=92)
         clips.append(ImageClip(path_a, duration=1))
         ding_times.append(global_t)
         global_t += 1.0
 
-    # Son frame: tüm cevaplar açık, 2 sn
+    # Son frame: tüm cevaplar açık, 3 sn — güçlü CTA
     img_end = make_frame(questions, 9, 9, flags[questions[-1][0]], bg_img=bg_img,
-                         quiz_mode=quiz_mode)
+                         quiz_mode=quiz_mode, score=10)
     img_end_draw = ImageDraw.Draw(img_end)
-    f_end = load_font(64, bold=True)
-    bbox = img_end_draw.textbbox((0,0), "How many did you get?", font=f_end)
-    ex = (W - (bbox[2]-bbox[0])) // 2
-    img_end_draw.text((ex, H-200), "How many did you get?",
-                      font=f_end, fill=(255,220,50))
+    f_end  = load_font(72, bold=True)
+    f_end2 = load_font(56, bold=True)
+    # Satır 1
+    line1 = "Comment your score! 👇"
+    bbox1 = img_end_draw.textbbox((0,0), line1, font=f_end)
+    ex1 = (W - (bbox1[2]-bbox1[0])) // 2
+    img_end_draw.text((ex1+3, H-240), line1, font=f_end, fill=(0,0,0))
+    img_end_draw.text((ex1,   H-243), line1, font=f_end, fill=(255,220,50))
+    # Satır 2
+    line2 = "LIKE if you got 10/10 ✅"
+    bbox2 = img_end_draw.textbbox((0,0), line2, font=f_end2)
+    ex2 = (W - (bbox2[2]-bbox2[0])) // 2
+    img_end_draw.text((ex2+2, H-158), line2, font=f_end2, fill=(0,0,0))
+    img_end_draw.text((ex2,   H-160), line2, font=f_end2, fill=(80,220,100))
     path_end = "_frame_end.jpg"
     img_end.save(path_end, quality=92)
-    clips.append(ImageClip(path_end, duration=2))
+    clips.append(ImageClip(path_end, duration=3))
 
     print("Video birlestiriliyor...")
     final = concatenate_videoclips(clips, method="compose")

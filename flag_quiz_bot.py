@@ -738,7 +738,7 @@ def create_video(questions, quiz_mode="flag"):
             bg = AudioFileClip(chosen_music)
             start = random.randint(0, max(0, int(bg.duration) - int(total_dur) - 5))
             bg = bg.subclip(start, min(start + total_dur, bg.duration))
-            bg = bg.volumex(0.08)   # çok düşük — efektler baskın kalsın
+            bg = bg.volumex(0.03)   # çok düşük — efektler baskın kalsın
             audio_clips.append(bg)
             print("Muzik eklendi.")
         except Exception as e:
